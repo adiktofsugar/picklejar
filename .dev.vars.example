@@ -1,0 +1,7 @@
+# S3 Configuration
+S3_BUCKET_NAME=your-bucket-name
+S3_BUCKET_REGION=us-east-1
+S3_BUCKET_ENDPOINT=s3.us-east-1.amazonaws.com
+S3_BUCKET_PREFIX=
+S3_API_KEY=your-access-key-id
+S3_API_KEY_SECRET=your-secret-access-key
