@@ -7,18 +7,10 @@ app.get('/api/test', async (c) => {
     return c.text("Hello from hono");
 })
 
-app.all('/s3/', async (c) => {
-    return fetchS3(c, '');
-})
-
 app.all('/s3/:s3Path{.+}', async (c) => {
     const { s3Path } = c.req.param();
-    return fetchS3(c, s3Path);
-})
-
-function fetchS3(c: Context<{ Bindings: Env }>, pathname: string) {
     const prefix = c.env.S3_BUCKET_PREFIX || '';
-    const url = `https://${c.env.S3_BUCKET_ENDPOINT}/${prefix}${pathname}`;
+    const url = `https://${c.env.S3_BUCKET_ENDPOINT}/${prefix}${s3Path}`;
 
     const aws = new AwsClient({
         accessKeyId: c.env.S3_API_KEY,
@@ -31,7 +23,7 @@ function fetchS3(c: Context<{ Bindings: Env }>, pathname: string) {
         method: c.req.method,
         body: c.req.raw.body,
     });
-}
+})
 
 
 export default {
