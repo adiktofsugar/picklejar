@@ -1,10 +1,21 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "picklejar",
-  "compatibility_date": "2025-04-03",
-  "assets": {
-    "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/**", "/s3/**"],
-  },
-  "main": "./worker/index.ts"
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "picklejar",
+	"compatibility_date": "2025-04-03",
+	"assets": {
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/api/**",
+			"/s3/**"
+		],
+	},
+	"main": "./worker/index.ts",
+	"d1_databases": [
+		{
+			"binding": "db",
+			"database_name": "picklejar",
+			"database_id": "b267ac09-ea43-4716-8c26-1f275f67f886",
+			"remote": true
+		}
+	]
 }

@@ -1,4 +1,4 @@
-import { Hono, type Context } from 'hono';
+import { Hono } from 'hono';
 import { AwsClient } from 'aws4fetch';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -7,6 +7,7 @@ app.get('/api/test', async (c) => {
     return c.text("Hello from hono");
 })
 
+// TODO: this will likely be a specific source in the end
 app.all('/s3/:s3Path{.+}', async (c) => {
     const { s3Path } = c.req.param();
     const prefix = c.env.S3_BUCKET_PREFIX || '';
