@@ -1,0 +1,5 @@
+mutation CreateSource($input:CreateS3SourceInput!) {
+    createS3Source(input:  $input) {
+        id
+    }
+}

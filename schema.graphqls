@@ -1,0 +1,56 @@
+schema {
+    query: Query
+    mutation: Mutation
+}
+
+type Query {
+    sources: [Source!]!
+    photos: [Photo!]!
+}
+
+input CreateS3SourceInput {
+    name: String!
+    s3_endpoint: String!
+    s3_region: String!
+    s3_bucket: String!
+    s3_api_key: String!
+    s3_api_key_secret: String!
+}
+
+input UpdateS3SourceInput {
+    id: ID!
+    name: String
+    s3_endpoint: String
+    s3_region: String
+    s3_bucket: String
+    s3_api_key: String
+    s3_api_key_secret: String
+}
+
+type Mutation {
+    createS3Source(input: CreateS3SourceInput!): S3Source!
+    updateS3Source(input: UpdateS3SourceInput!): S3Source!
+}
+
+union Source = S3Source
+
+type S3Source {
+    id: ID!
+    name: String!
+    s3_endpoint: String!
+    s3_region: String!
+    s3_bucket: String!
+    s3_api_key: String!
+    s3_api_key_secret: String!
+}
+
+union Photo = S3Object
+
+type S3Object {
+    id: ID!
+    source: S3Source!
+    key: String!
+    date_created: Int!
+    lat: Float
+    lng: Float
+}

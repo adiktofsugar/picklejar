@@ -2,7 +2,7 @@
     "extends": "./tsconfig.node.json",
     "compilerOptions": {
         "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.worker.tsbuildinfo",
-        "types": ["./wranger-types.d.ts"]
+        "types": ["./wrangler-types.d.ts"]
     },
     "include": ["worker"]
 }
