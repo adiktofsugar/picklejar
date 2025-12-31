@@ -11,7 +11,6 @@
 - description uploads
 - vector search
 
-
 ## description generation
 
 This might be better to do offline initially as I think it'll end up taking multiple days because of the limit... To handle this, we want a (bulk) description upload that takes the (current) keys and renames them to the md5 hashes.

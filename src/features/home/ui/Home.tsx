@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState } from "react";
 
 export function Home() {
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(0);
 
   return (
     <>
@@ -12,5 +12,5 @@ export function Home() {
         </button>
       </div>
     </>
-  )
+  );
 }

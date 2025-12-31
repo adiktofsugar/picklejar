@@ -1,11 +1,11 @@
 query GetSources {
-    sources {
-        ... on S3Source {
-            id
-            name
-            s3_endpoint
-            s3_region
-            s3_bucket
-        }
+  sources {
+    ... on S3Source {
+      id
+      name
+      s3_endpoint
+      s3_region
+      s3_bucket
     }
+  }
 }

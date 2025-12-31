@@ -1,4 +1,4 @@
-declare module '*.graphqls?raw' {
+declare module "*.graphqls?raw" {
   const content: string;
   export default content;
 }

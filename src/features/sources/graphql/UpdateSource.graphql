@@ -1,5 +1,5 @@
-mutation UpdateSource($input:UpdateS3SourceInput!) {
-    updateS3Source(input:  $input) {
-        id
-    }
+mutation UpdateSource($input: UpdateS3SourceInput!) {
+  updateS3Source(input: $input) {
+    id
+  }
 }
