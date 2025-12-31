@@ -1,0 +1,7 @@
+@use '@picocss/pico/scss/pico' with (
+    // https://picocss.com/docs/sass#theme-color
+    $theme-color: "jade",
+    // copied from the pico.classless version
+    $enable-semantic-container: true,
+    $enable-classes: false
+)

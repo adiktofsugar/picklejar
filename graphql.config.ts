@@ -13,7 +13,7 @@ const config: IGraphQLConfig = {
           },
         },
         './src/generated/graphql.ts': {
-          plugins: ['typescript', 'typescript-operations'],
+          plugins: ['typescript', 'typescript-operations', 'typed-document-node'],
         },
       },
     },
