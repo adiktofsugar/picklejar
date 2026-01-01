@@ -1,14 +1,18 @@
 import { Hono } from "hono";
+import { logger } from "hono/logger";
 import { AwsClient } from "aws4fetch";
 import { createGraphQLHandler } from "./graphql";
 
+const graphqlEndpoint = "/api/graphql";
+
 const app = new Hono<{ Bindings: Env }>();
+
+app.use(logger());
 
 app.get("/api/test", async (c) => {
   return c.text("Hello from hono");
 });
 
-const graphqlEndpoint = "/api/graphql";
 app.on(["GET", "POST"], graphqlEndpoint, async (c) => {
   const handler = createGraphQLHandler(c.env.db, graphqlEndpoint);
   return handler.fetch(c.req.raw, c.env);
@@ -37,3 +41,16 @@ app.all("/s3/:s3Path{.+}", async (c) => {
 export default {
   fetch: app.fetch,
 } satisfies ExportedHandler<Env>;
+
+// const yoga = createYoga<Env>({
+//   schema: createSchema({ typeDefs, resolvers }),
+//   graphqlEndpoint,
+//   logging: "debug",
+//   fetchAPI: { Response },
+// });
+
+// export default {
+//   async fetch(req, env) {
+//     return yoga.fetch(req, env);
+//   },
+// } satisfies ExportedHandler<Env>;

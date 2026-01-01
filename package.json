@@ -17,7 +17,8 @@
     "types": "concurrently npm:types:*",
     "types:wrangler": "wrangler types ./wrangler-types.d.ts",
     "types:router": "tsr generate",
-    "types:codegen": "graphql-codegen --config graphql.config.ts"
+    "types:codegen": "graphql-codegen --config graphql.config.ts",
+    "db:prepare": "wrangler d1 migrations apply picklejar"
   },
   "dependencies": {
     "@apollo/client": "^4.0.11",

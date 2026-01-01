@@ -5,9 +5,20 @@ import { Error } from "../../../shared/Error";
 import { MouseEventHandler, useMemo } from "react";
 
 export function SourceList() {
-  const { data, error, loading } = useQuery(GetSourcesDocument);
+  const { data, error, loading, refetch } = useQuery(GetSourcesDocument);
   if (error) {
-    return <Error message={error.message} />;
+    return (
+      <div>
+        <Error message={error.message} />
+        <button
+          onClick={() => {
+            refetch();
+          }}
+        >
+          Try again?
+        </button>
+      </div>
+    );
   }
   if (loading) {
     return <p aria-busy="true">Loading...</p>;

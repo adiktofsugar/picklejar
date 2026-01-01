@@ -21,7 +21,7 @@ function toObjectResolver(row: ObjectRow): ObjectRowResolver {
   return { ...row, id: String(row.id) };
 }
 
-const resolvers: Resolvers<GraphQLContext> = {
+export const resolvers: Resolvers<GraphQLContext> = {
   Query: {
     sources: async (_parent, _args, context) => {
       const result = await context.db
@@ -152,5 +152,28 @@ export function createGraphQLHandler(db: D1Database, graphqlEndpoint: string) {
     schema: createSchema({ typeDefs, resolvers }),
     context: { db },
     graphqlEndpoint,
+    fetchAPI: {
+      Response,
+      Blob,
+      btoa,
+      CompressionStream,
+      crypto,
+      DecompressionStream,
+      fetch,
+      File,
+      FormData,
+      Headers,
+      ReadableStream,
+      Request,
+      TextDecoder,
+      TextDecoderStream,
+      TextEncoder,
+      TextEncoderStream,
+      TransformStream,
+      URL,
+      URLPattern,
+      URLSearchParams,
+      WritableStream,
+    },
   });
 }
