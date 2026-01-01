@@ -1,0 +1,13 @@
+@use "@picocss/pico/scss/colors" as *;
+
+.container {
+  background: $red-500;
+  color: white;
+}
+
+.error {
+  color: $red-500;
+  // background: $red-500;
+  // color: white;
+  // padding: 5px;
+}

@@ -7,14 +7,14 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    react(),
-    cloudflare(),
-    codegen(),
     tanstackRouter({
       target: "react",
       routesDirectory: "./src/routes",
       generatedRouteTree: "./src/generated/routes.ts",
     }),
+    codegen(),
+    react(),
+    cloudflare(),
   ],
   css: {
     preprocessorOptions: {

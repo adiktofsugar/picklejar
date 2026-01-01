@@ -1,5 +1,5 @@
 import { createSchema, createYoga } from "graphql-yoga";
-import type { Resolvers } from "./generated/graphql";
+import type { Resolvers } from "./generated/graphql-resolvers";
 import type {
   SourceRow,
   ObjectRow,

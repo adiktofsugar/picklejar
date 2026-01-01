@@ -1,8 +1,9 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import { useLocation } from "@tanstack/react-router";
 import { Header } from "../features/header";
+import type { ApolloClient } from "@apollo/client";
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{ client: ApolloClient }>()({
   component: Root,
   notFoundComponent: NotFound,
 });

@@ -1,13 +1,7 @@
 -- Migration number: 0001 	 2025-12-30T08:11:50.682Z
 
-CREATE TABLE migrations (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    filename VARCHAR(255) NOT NULL,
-    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE sources (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     kind VARCHAR(100),
     s3_endpoint VARCHAR(250),
@@ -18,7 +12,7 @@ CREATE TABLE sources (
 );
 
 CREATE TABLE objects (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     key VARCHAR(100) NOT NULL,
     source_id INT,
     date_created INT,
