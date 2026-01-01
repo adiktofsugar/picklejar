@@ -5,6 +5,7 @@ schema {
 
 type Query {
   sources: [Source!]!
+  source(id: ID!): Source
   photos: [Photo!]!
 }
 
@@ -27,9 +28,14 @@ input UpdateS3SourceInput {
   s3_api_key_secret: String
 }
 
+input DeleteS3SourceInput {
+  id: ID!
+}
+
 type Mutation {
   createS3Source(input: CreateS3SourceInput!): S3Source!
   updateS3Source(input: UpdateS3SourceInput!): S3Source!
+  deleteS3Source(input: DeleteS3SourceInput!): S3Source!
 }
 
 union Source = S3Source

@@ -1,3 +1,4 @@
 src/generated/**
 worker/generated/**
 wrangler-types.d.ts
+.claude/

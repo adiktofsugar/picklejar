@@ -1,30 +1,24 @@
 import { createSchema, createYoga } from "graphql-yoga";
-import type { Resolvers, S3Source, S3Object } from "./generated/graphql";
+import type { Resolvers } from "./generated/graphql";
+import type {
+  SourceRow,
+  ObjectRow,
+  SourceRowResolver,
+  ObjectRowResolver,
+} from "./db-types";
 import typeDefs from "../schema.graphqls?raw";
+import { GraphQLError } from "graphql";
 
 export interface GraphQLContext {
   db: D1Database;
 }
 
-// Database row types (match the actual DB schema)
-interface SourceRow {
-  id: number;
-  name: string;
-  kind: string;
-  s3_endpoint: string;
-  s3_region: string;
-  s3_bucket: string;
-  s3_api_key: string;
-  s3_api_key_secret: string;
+function toSourceResolver(row: SourceRow): SourceRowResolver {
+  return { ...row, id: String(row.id) };
 }
 
-interface ObjectRow {
-  id: number;
-  key: string;
-  source_id: number;
-  date_created: number;
-  lat: number | null;
-  lng: number | null;
+function toObjectResolver(row: ObjectRow): ObjectRowResolver {
+  return { ...row, id: String(row.id) };
 }
 
 const resolvers: Resolvers<GraphQLContext> = {
@@ -33,13 +27,23 @@ const resolvers: Resolvers<GraphQLContext> = {
       const result = await context.db
         .prepare("SELECT * FROM sources")
         .all<SourceRow>();
-      return result.results as unknown as S3Source[];
+      return result.results.map(toSourceResolver);
+    },
+    source: async (_parent, { id }, context) => {
+      const result = await context.db
+        .prepare("SELECT * FROM sources WHERE id = ?")
+        .bind(id)
+        .first<SourceRow>();
+      if (!result) {
+        throw new GraphQLError(`Could not find source with id: ${id}`);
+      }
+      return toSourceResolver(result);
     },
     photos: async (_parent, _args, context) => {
       const result = await context.db
         .prepare("SELECT * FROM objects")
         .all<ObjectRow>();
-      return result.results as unknown as S3Object[];
+      return result.results.map(toObjectResolver);
     },
   },
   Mutation: {
@@ -48,7 +52,7 @@ const resolvers: Resolvers<GraphQLContext> = {
         .prepare(
           `INSERT INTO sources (name, kind, s3_endpoint, s3_region, s3_bucket, s3_api_key, s3_api_key_secret)
            VALUES (?, 'S3', ?, ?, ?, ?, ?)
-           RETURNING *`,
+           RETURNING *`
         )
         .bind(
           input.name,
@@ -56,10 +60,13 @@ const resolvers: Resolvers<GraphQLContext> = {
           input.s3_region,
           input.s3_bucket,
           input.s3_api_key,
-          input.s3_api_key_secret,
+          input.s3_api_key_secret
         )
         .first<SourceRow>();
-      return result as unknown as S3Source;
+      if (!result) {
+        throw new GraphQLError("Failed to create source");
+      }
+      return toSourceResolver(result);
     },
     updateS3Source: async (_parent, { input }, context) => {
       const updates: string[] = [];
@@ -94,16 +101,28 @@ const resolvers: Resolvers<GraphQLContext> = {
 
       const result = await context.db
         .prepare(
-          `UPDATE sources SET ${updates.join(", ")} WHERE id = ? RETURNING *`,
+          `UPDATE sources SET ${updates.join(", ")} WHERE id = ? RETURNING *`
         )
         .bind(...values)
         .first<SourceRow>();
 
       if (!result) {
-        throw new Error(`Source with id ${input.id} not found`);
+        throw new GraphQLError(`Source with id ${input.id} not found`);
       }
 
-      return result as unknown as S3Source;
+      return toSourceResolver(result);
+    },
+    deleteS3Source: async (_parent, { input }, context) => {
+      const result = await context.db
+        .prepare("DELETE FROM sources WHERE id = ? RETURNING *")
+        .bind(Number(input.id))
+        .first<SourceRow>();
+
+      if (!result) {
+        throw new GraphQLError(`Source with id ${input.id} not found`);
+      }
+
+      return toSourceResolver(result);
     },
   },
   Source: {
@@ -114,12 +133,16 @@ const resolvers: Resolvers<GraphQLContext> = {
   },
   S3Object: {
     source: async (parent, _args, context) => {
-      const objectRow = parent as unknown as ObjectRow;
       const result = await context.db
         .prepare("SELECT * FROM sources WHERE id = ?")
-        .bind(objectRow.source_id)
+        .bind(parent.source_id)
         .first<SourceRow>();
-      return result as unknown as S3Source;
+      if (!result) {
+        throw new GraphQLError(
+          `Could not find source with id: ${parent.source_id}`
+        );
+      }
+      return toSourceResolver(result);
     },
   },
 };

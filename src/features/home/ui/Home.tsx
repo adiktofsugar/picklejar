@@ -1,16 +1,14 @@
-import { useState } from "react";
-
 export function Home() {
-  const [count, setCount] = useState(0);
-
   return (
     <>
-      <h1>Picklejar - oh yeah</h1>
-      <div>
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-      </div>
+      <hgroup>
+        <h1>Pickle Jar</h1>
+        <p>Photos and more! (eventually)</p>
+      </hgroup>
+      <img
+        src="/src/assets/pickle-dancing-on-a-jar.jpg"
+        alt="pickle dancing on a jar"
+      />
     </>
   );
 }

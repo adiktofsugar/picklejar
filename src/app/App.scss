@@ -3,5 +3,7 @@
   $theme-color: "jade",
   // copied from the pico.classless version
   $enable-semantic-container: true,
-  $enable-classes: false
+  $enable-classes: false,
+  // because I'm using #root...
+  $semantic-root-element: "#root"
 );

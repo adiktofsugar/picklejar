@@ -1,11 +1,12 @@
 import { GraphQLProvider } from "./GraphQlProvider";
-import { Home } from "../features/home";
 import "./App.scss";
+import { RouterProvider } from "@tanstack/react-router";
+import { router } from "./router";
 
 export function App() {
   return (
     <GraphQLProvider>
-      <Home />
+      <RouterProvider router={router} />
     </GraphQLProvider>
   );
 }

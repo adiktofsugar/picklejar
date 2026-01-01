@@ -6,6 +6,9 @@ import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 import importPlugin from "eslint-plugin-import-x";
 
+// this is the direction they can import in
+const LAYERS = ["app", "routes", "features", "shared"];
+
 export default defineConfig([
   globalIgnores(["dist", "wrangler-types.d.ts", "**/generated/*.ts"]),
   {
@@ -27,19 +30,16 @@ export default defineConfig([
       "import-x/no-restricted-paths": [
         "error",
         {
-          zones: [
-            // app can import anything
-            // features can not import from app
-            {
-              target: "./src/features",
-              from: ["./src/app"],
-            },
-            // shared can not import from ...anything, really
-            {
-              target: "./src/shared",
-              from: ["./src/app", "./src/features"],
-            },
-          ],
+          zones: LAYERS.map((layer, i) => {
+            const upperLayers = LAYERS.slice(0, i);
+            if (!upperLayers.length) {
+              return null;
+            }
+            return {
+              target: `./src/${layer}`,
+              from: upperLayers.map((l) => `./src/${l}`),
+            };
+          }).filter(Boolean),
         },
       ],
     },
