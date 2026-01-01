@@ -50,12 +50,10 @@ export type MutationUpdateS3SourceArgs = {
   input: UpdateS3SourceInput;
 };
 
-export type Photo = S3Object;
-
 export type Query = {
   __typename?: 'Query';
-  photos: Array<Photo>;
-  source?: Maybe<Source>;
+  photos: Array<S3Object>;
+  source: Source;
   sources: Array<Source>;
 };
 
@@ -69,12 +67,12 @@ export type S3Object = {
   date_created: Scalars['Int']['output'];
   id: Scalars['ID']['output'];
   key: Scalars['String']['output'];
-  lat?: Maybe<Scalars['Float']['output']>;
-  lng?: Maybe<Scalars['Float']['output']>;
+  lat: Maybe<Scalars['Float']['output']>;
+  lng: Maybe<Scalars['Float']['output']>;
   source: S3Source;
 };
 
-export type S3Source = {
+export type S3Source = Source & {
   __typename?: 'S3Source';
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
@@ -85,16 +83,19 @@ export type S3Source = {
   s3_region: Scalars['String']['output'];
 };
 
-export type Source = S3Source;
+export type Source = {
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+};
 
 export type UpdateS3SourceInput = {
   id: Scalars['ID']['input'];
-  name?: InputMaybe<Scalars['String']['input']>;
-  s3_api_key?: InputMaybe<Scalars['String']['input']>;
-  s3_api_key_secret?: InputMaybe<Scalars['String']['input']>;
-  s3_bucket?: InputMaybe<Scalars['String']['input']>;
-  s3_endpoint?: InputMaybe<Scalars['String']['input']>;
-  s3_region?: InputMaybe<Scalars['String']['input']>;
+  name: InputMaybe<Scalars['String']['input']>;
+  s3_api_key: InputMaybe<Scalars['String']['input']>;
+  s3_api_key_secret: InputMaybe<Scalars['String']['input']>;
+  s3_bucket: InputMaybe<Scalars['String']['input']>;
+  s3_endpoint: InputMaybe<Scalars['String']['input']>;
+  s3_region: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CreateSourceMutationVariables = Exact<{
@@ -109,12 +110,12 @@ export type GetSourceQueryVariables = Exact<{
 }>;
 
 
-export type GetSourceQuery = { __typename?: 'Query', source?: { __typename?: 'S3Source', id: string, name: string, s3_endpoint: string, s3_region: string, s3_bucket: string } | null };
+export type GetSourceQuery = { __typename?: 'Query', source: { __typename?: 'S3Source', s3_endpoint: string, s3_region: string, s3_bucket: string, id: string, name: string } };
 
 export type GetSourcesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetSourcesQuery = { __typename?: 'Query', sources: Array<{ __typename?: 'S3Source', id: string, name: string, s3_endpoint: string, s3_region: string, s3_bucket: string }> };
+export type GetSourcesQuery = { __typename?: 'Query', sources: Array<{ __typename?: 'S3Source', s3_endpoint: string, s3_region: string, s3_bucket: string, id: string, name: string }> };
 
 export type UpdateSourceMutationVariables = Exact<{
   input: UpdateS3SourceInput;
@@ -123,8 +124,16 @@ export type UpdateSourceMutationVariables = Exact<{
 
 export type UpdateSourceMutation = { __typename?: 'Mutation', updateS3Source: { __typename?: 'S3Source', id: string } };
 
+export type GetSourcesIdDataQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type GetSourcesIdDataQuery = { __typename?: 'Query', source: { __typename?: 'S3Source', id: string, name: string } };
+
 
 export const CreateSourceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateSource"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateS3SourceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createS3Source"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<CreateSourceMutation, CreateSourceMutationVariables>;
-export const GetSourceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSource"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"source"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"S3Source"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"s3_endpoint"}},{"kind":"Field","name":{"kind":"Name","value":"s3_region"}},{"kind":"Field","name":{"kind":"Name","value":"s3_bucket"}}]}}]}}]}}]} as unknown as DocumentNode<GetSourceQuery, GetSourceQueryVariables>;
-export const GetSourcesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSources"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sources"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"S3Source"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"s3_endpoint"}},{"kind":"Field","name":{"kind":"Name","value":"s3_region"}},{"kind":"Field","name":{"kind":"Name","value":"s3_bucket"}}]}}]}}]}}]} as unknown as DocumentNode<GetSourcesQuery, GetSourcesQueryVariables>;
+export const GetSourceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSource"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"source"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"S3Source"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"s3_endpoint"}},{"kind":"Field","name":{"kind":"Name","value":"s3_region"}},{"kind":"Field","name":{"kind":"Name","value":"s3_bucket"}}]}}]}}]}}]} as unknown as DocumentNode<GetSourceQuery, GetSourceQueryVariables>;
+export const GetSourcesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSources"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sources"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"S3Source"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"s3_endpoint"}},{"kind":"Field","name":{"kind":"Name","value":"s3_region"}},{"kind":"Field","name":{"kind":"Name","value":"s3_bucket"}}]}}]}}]}}]} as unknown as DocumentNode<GetSourcesQuery, GetSourcesQueryVariables>;
 export const UpdateSourceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateSource"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateS3SourceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateS3Source"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<UpdateSourceMutation, UpdateSourceMutationVariables>;
+export const GetSourcesIdDataDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSourcesIdData"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"source"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<GetSourcesIdDataQuery, GetSourcesIdDataQueryVariables>;

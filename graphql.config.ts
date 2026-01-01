@@ -28,7 +28,9 @@ const codegen: CodegenConfig = {
     },
     "./src/generated/graphql-operations.ts": {
       plugins: ["typescript", "typescript-operations", "typed-document-node"],
-      config: {} satisfies TypeScriptDocumentsPluginConfig,
+      config: {
+        avoidOptionals: true,
+      } satisfies TypeScriptDocumentsPluginConfig,
     },
   },
 };

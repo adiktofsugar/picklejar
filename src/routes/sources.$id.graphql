@@ -1,0 +1,6 @@
+query GetSourcesIdData($id: ID!) {
+  source(id: $id) {
+    id
+    name
+  }
+}

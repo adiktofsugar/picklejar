@@ -7,3 +7,9 @@
   // because I'm using #root...
   $semantic-root-element: "#root"
 );
+@use "@picocss/pico/scss/colors" as *;
+
+a[aria-current]:not([aria-current="false"]).active {
+  background-color: $jade-500;
+  color: white;
+}

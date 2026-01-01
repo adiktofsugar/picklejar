@@ -128,9 +128,6 @@ export const resolvers: Resolvers<GraphQLContext> = {
   Source: {
     __resolveType: () => "S3Source",
   },
-  Photo: {
-    __resolveType: () => "S3Object",
-  },
   S3Object: {
     source: async (parent, _args, context) => {
       const result = await context.db

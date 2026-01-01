@@ -52,12 +52,10 @@ export type MutationUpdateS3SourceArgs = {
   input: UpdateS3SourceInput;
 };
 
-export type Photo = S3Object;
-
 export type Query = {
   __typename?: 'Query';
-  photos: Array<Photo>;
-  source: Maybe<Source>;
+  photos: Array<S3Object>;
+  source: Source;
   sources: Array<Source>;
 };
 
@@ -76,7 +74,7 @@ export type S3Object = {
   source: S3Source;
 };
 
-export type S3Source = {
+export type S3Source = Source & {
   __typename?: 'S3Source';
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
@@ -87,7 +85,10 @@ export type S3Source = {
   s3_region: Scalars['String']['output'];
 };
 
-export type Source = S3Source;
+export type Source = {
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+};
 
 export type UpdateS3SourceInput = {
   id: Scalars['ID']['input'];
@@ -169,12 +170,11 @@ export type DirectiveResolverFn<TResult = Record<PropertyKey, never>, TParent = 
 
 
 
-/** Mapping of union types */
-export type ResolversUnionTypes<_RefType extends Record<string, unknown>> = ResolversObject<{
-  Photo: ( ObjectRowResolver );
+
+/** Mapping of interface types */
+export type ResolversInterfaceTypes<_RefType extends Record<string, unknown>> = ResolversObject<{
   Source: ( SourceRowResolver );
 }>;
-
 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = ResolversObject<{
@@ -185,11 +185,10 @@ export type ResolversTypes = ResolversObject<{
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
-  Photo: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['Photo']>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   S3Object: ResolverTypeWrapper<ObjectRowResolver>;
   S3Source: ResolverTypeWrapper<SourceRowResolver>;
-  Source: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['Source']>;
+  Source: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Source']>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   UpdateS3SourceInput: UpdateS3SourceInput;
 }>;
@@ -203,11 +202,10 @@ export type ResolversParentTypes = ResolversObject<{
   ID: Scalars['ID']['output'];
   Int: Scalars['Int']['output'];
   Mutation: Record<PropertyKey, never>;
-  Photo: ResolversUnionTypes<ResolversParentTypes>['Photo'];
   Query: Record<PropertyKey, never>;
   S3Object: ObjectRowResolver;
   S3Source: SourceRowResolver;
-  Source: ResolversUnionTypes<ResolversParentTypes>['Source'];
+  Source: ResolversInterfaceTypes<ResolversParentTypes>['Source'];
   String: Scalars['String']['output'];
   UpdateS3SourceInput: UpdateS3SourceInput;
 }>;
@@ -218,13 +216,9 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
   updateS3Source: Resolver<ResolversTypes['S3Source'], ParentType, ContextType, RequireFields<MutationUpdateS3SourceArgs, 'input'>>;
 }>;
 
-export type PhotoResolvers<ContextType = any, ParentType extends ResolversParentTypes['Photo'] = ResolversParentTypes['Photo']> = ResolversObject<{
-  __resolveType: TypeResolveFn<'S3Object', ParentType, ContextType>;
-}>;
-
 export type QueryResolvers<ContextType = any, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = ResolversObject<{
-  photos: Resolver<Array<ResolversTypes['Photo']>, ParentType, ContextType>;
-  source: Resolver<Maybe<ResolversTypes['Source']>, ParentType, ContextType, RequireFields<QuerySourceArgs, 'id'>>;
+  photos: Resolver<Array<ResolversTypes['S3Object']>, ParentType, ContextType>;
+  source: Resolver<ResolversTypes['Source'], ParentType, ContextType, RequireFields<QuerySourceArgs, 'id'>>;
   sources: Resolver<Array<ResolversTypes['Source']>, ParentType, ContextType>;
 }>;
 
@@ -235,7 +229,6 @@ export type S3ObjectResolvers<ContextType = any, ParentType extends ResolversPar
   lat?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   lng?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   source?: Resolver<ResolversTypes['S3Source'], ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
 export type S3SourceResolvers<ContextType = any, ParentType extends ResolversParentTypes['S3Source'] = ResolversParentTypes['S3Source']> = ResolversObject<{
@@ -255,7 +248,6 @@ export type SourceResolvers<ContextType = any, ParentType extends ResolversParen
 
 export type Resolvers<ContextType = any> = ResolversObject<{
   Mutation?: MutationResolvers<ContextType>;
-  Photo?: PhotoResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   S3Object?: S3ObjectResolvers<ContextType>;
   S3Source?: S3SourceResolvers<ContextType>;

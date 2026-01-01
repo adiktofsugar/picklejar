@@ -1,8 +1,8 @@
 query GetSource($id: ID!) {
   source(id: $id) {
+    id
+    name
     ... on S3Source {
-      id
-      name
       s3_endpoint
       s3_region
       s3_bucket

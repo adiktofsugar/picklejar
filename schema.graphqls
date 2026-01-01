@@ -5,8 +5,8 @@ schema {
 
 type Query {
   sources: [Source!]!
-  source(id: ID!): Source
-  photos: [Photo!]!
+  source(id: ID!): Source!
+  photos: [S3Object!]!
 }
 
 input CreateS3SourceInput {
@@ -38,9 +38,12 @@ type Mutation {
   deleteS3Source(input: DeleteS3SourceInput!): S3Source!
 }
 
-union Source = S3Source
+interface Source {
+  id: ID!
+  name: String!
+}
 
-type S3Source {
+type S3Source implements Source {
   id: ID!
   name: String!
   s3_endpoint: String!
@@ -49,8 +52,6 @@ type S3Source {
   s3_api_key: String!
   s3_api_key_secret: String!
 }
-
-union Photo = S3Object
 
 type S3Object {
   id: ID!

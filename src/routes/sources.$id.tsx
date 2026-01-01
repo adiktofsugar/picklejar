@@ -1,10 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { GetSourceDocument } from "../generated/graphql";
+import { SourceDetail, SourceLoading } from "../features/sources";
+import { Suspense } from "react";
+import { GetSourcesIdDataDocument } from "../generated/graphql-operations";
+import { ErrorBoundary } from "react-error-boundary";
+import { SourceErrorFallback } from "../features/sources/ui/SourceErrorFallback";
 
 export const Route = createFileRoute("/sources/$id")({
   async loader({ params: { id }, context: { client } }) {
     const { data, error } = await client.query({
-      query: GetSourceDocument,
+      query: GetSourcesIdDataDocument,
       variables: { id },
     });
     if (error) {
@@ -12,35 +16,16 @@ export const Route = createFileRoute("/sources/$id")({
     }
     return data!;
   },
-  component: SourceDetail,
+  component: SourceDetailRoute,
 });
 
-function SourceDetail() {
-  const { source } = Route.useLoaderData();
-  if (!source) {
-    return (
-      <div>
-        <p>Source not found</p>
-      </div>
-    );
-  }
+function SourceDetailRoute() {
+  const params = Route.useParams();
   return (
-    <div>
-      <h2>{source.name}</h2>
-      <table>
-        <tr>
-          <td>Bucket</td>
-          <td>{source.s3_bucket}</td>
-        </tr>
-        <tr>
-          <td>Endpoint</td>
-          <td>{source.s3_endpoint}</td>
-        </tr>
-        <tr>
-          <td>Region</td>
-          <td>{source.s3_region}</td>
-        </tr>
-      </table>
-    </div>
+    <ErrorBoundary FallbackComponent={SourceErrorFallback}>
+      <Suspense fallback={<SourceLoading message="Loading source" />}>
+        <SourceDetail id={params.id} />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
