@@ -2,27 +2,32 @@ import {
   createRootRouteWithContext,
   Link,
   Outlet,
-  useRouterState,
+  useMatches,
 } from "@tanstack/react-router";
 import { useLocation } from "@tanstack/react-router";
-import { Header } from "../features/header";
+import { Header } from "@/features/header";
 import type { ApolloClient } from "@apollo/client";
 
-export const Route = createRootRouteWithContext<{ client: ApolloClient }>()({
+export const Route = createRootRouteWithContext<{
+  client: ApolloClient;
+  crumb: string;
+}>()({
   component: Root,
   notFoundComponent: NotFound,
 });
 
 function Root() {
-  const matches = useRouterState({ select: (s) => s.matches });
+  const matches = useMatches();
 
-  const breadcrumbs = matches.map(({ pathname, id }) => {
-    return {
-      id,
-      title: id,
-      path: pathname,
-    };
-  });
+  const breadcrumbs = matches
+    .map(({ pathname, id, context, staticData }) => {
+      return {
+        id,
+        title: staticData.crumb || context.crumb,
+        path: pathname,
+      };
+    })
+    .filter((bc) => bc.title);
   return (
     <>
       <header>
@@ -31,7 +36,9 @@ function Root() {
           <ul>
             {breadcrumbs.map((bc) => (
               <li key={bc.id}>
-                <Link to={bc.path}>{bc.title}</Link>
+                <Link to={bc.path} activeOptions={{ exact: true }}>
+                  {bc.title}
+                </Link>
               </li>
             ))}
           </ul>

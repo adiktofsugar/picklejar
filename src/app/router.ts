@@ -12,11 +12,15 @@ export const router = createRouter({
   // context
   context: {
     client,
+    crumb: "",
   },
 });
 
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
+  }
+  interface StaticDataRouteOption {
+    crumb?: string;
   }
 }

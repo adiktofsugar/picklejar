@@ -9,37 +9,44 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './../routes/__root'
+import { Route as SourcesRouteImport } from './../routes/sources'
 import { Route as IndexRouteImport } from './../routes/index'
-import { Route as SourcesIndexRouteImport } from './../routes/sources.index'
-import { Route as SourcesNewRouteImport } from './../routes/sources.new'
-import { Route as SourcesIdRouteImport } from './../routes/sources.$id'
+import { Route as SourcesIndexRouteImport } from './../routes/sources/index'
+import { Route as SourcesNewRouteImport } from './../routes/sources/new'
+import { Route as SourcesIdRouteImport } from './../routes/sources/$id'
 
+const SourcesRoute = SourcesRouteImport.update({
+  id: '/sources',
+  path: '/sources',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SourcesIndexRoute = SourcesIndexRouteImport.update({
-  id: '/sources/',
-  path: '/sources/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => SourcesRoute,
 } as any)
 const SourcesNewRoute = SourcesNewRouteImport.update({
-  id: '/sources/new',
-  path: '/sources/new',
-  getParentRoute: () => rootRouteImport,
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => SourcesRoute,
 } as any)
 const SourcesIdRoute = SourcesIdRouteImport.update({
-  id: '/sources/$id',
-  path: '/sources/$id',
-  getParentRoute: () => rootRouteImport,
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SourcesRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/sources': typeof SourcesRouteWithChildren
   '/sources/$id': typeof SourcesIdRoute
   '/sources/new': typeof SourcesNewRoute
-  '/sources': typeof SourcesIndexRoute
+  '/sources/': typeof SourcesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -50,27 +57,39 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/sources': typeof SourcesRouteWithChildren
   '/sources/$id': typeof SourcesIdRoute
   '/sources/new': typeof SourcesNewRoute
   '/sources/': typeof SourcesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sources/$id' | '/sources/new' | '/sources'
+  fullPaths: '/' | '/sources' | '/sources/$id' | '/sources/new' | '/sources/'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/sources/$id' | '/sources/new' | '/sources'
-  id: '__root__' | '/' | '/sources/$id' | '/sources/new' | '/sources/'
+  id:
+    | '__root__'
+    | '/'
+    | '/sources'
+    | '/sources/$id'
+    | '/sources/new'
+    | '/sources/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  SourcesIdRoute: typeof SourcesIdRoute
-  SourcesNewRoute: typeof SourcesNewRoute
-  SourcesIndexRoute: typeof SourcesIndexRoute
+  SourcesRoute: typeof SourcesRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sources': {
+      id: '/sources'
+      path: '/sources'
+      fullPath: '/sources'
+      preLoaderRoute: typeof SourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -80,33 +99,46 @@ declare module '@tanstack/react-router' {
     }
     '/sources/': {
       id: '/sources/'
-      path: '/sources'
-      fullPath: '/sources'
+      path: '/'
+      fullPath: '/sources/'
       preLoaderRoute: typeof SourcesIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof SourcesRoute
     }
     '/sources/new': {
       id: '/sources/new'
-      path: '/sources/new'
+      path: '/new'
       fullPath: '/sources/new'
       preLoaderRoute: typeof SourcesNewRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof SourcesRoute
     }
     '/sources/$id': {
       id: '/sources/$id'
-      path: '/sources/$id'
+      path: '/$id'
       fullPath: '/sources/$id'
       preLoaderRoute: typeof SourcesIdRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof SourcesRoute
     }
   }
 }
 
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+interface SourcesRouteChildren {
+  SourcesIdRoute: typeof SourcesIdRoute
+  SourcesNewRoute: typeof SourcesNewRoute
+  SourcesIndexRoute: typeof SourcesIndexRoute
+}
+
+const SourcesRouteChildren: SourcesRouteChildren = {
   SourcesIdRoute: SourcesIdRoute,
   SourcesNewRoute: SourcesNewRoute,
   SourcesIndexRoute: SourcesIndexRoute,
+}
+
+const SourcesRouteWithChildren =
+  SourcesRoute._addFileChildren(SourcesRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  SourcesRoute: SourcesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

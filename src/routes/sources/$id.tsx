@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SourceDetail, SourceLoading } from "../features/sources";
+import {
+  SourceDetail,
+  SourceLoading,
+  SourceErrorFallback,
+} from "@/features/sources";
 import { Suspense } from "react";
-import { GetSourcesIdDataDocument } from "../generated/graphql-operations";
+import { GetSourcesIdDataDocument } from "@/generated/graphql-operations";
 import { ErrorBoundary } from "react-error-boundary";
-import { SourceErrorFallback } from "../features/sources/ui/SourceErrorFallback";
 
 export const Route = createFileRoute("/sources/$id")({
-  async loader({ params: { id }, context: { client } }) {
+  async beforeLoad({ params: { id }, context: { client } }) {
     const { data, error } = await client.query({
       query: GetSourcesIdDataDocument,
       variables: { id },
@@ -14,7 +17,11 @@ export const Route = createFileRoute("/sources/$id")({
     if (error) {
       throw error;
     }
-    return data!;
+    if (!data) throw new Error(`No data`);
+    return { data, crumb: data.source.name };
+  },
+  async loader({ context: { data } }) {
+    return data;
   },
   component: SourceDetailRoute,
 });

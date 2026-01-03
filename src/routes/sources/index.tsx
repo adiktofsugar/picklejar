@@ -3,7 +3,7 @@ import {
   SourceErrorFallback,
   SourceList,
   SourceLoading,
-} from "../features/sources";
+} from "@/features/sources";
 import { ErrorBoundary } from "react-error-boundary";
 import { Suspense } from "react";
 

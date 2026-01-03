@@ -1,10 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ErrorBoundary } from "react-error-boundary";
-import { SourceErrorFallback, SourceLoading } from "../features/sources";
+import {
+  SourceErrorFallback,
+  SourceLoading,
+  SourceNew,
+} from "@/features/sources";
 import { Suspense } from "react";
-import { SourceNew } from "../features/sources";
 
 export const Route = createFileRoute("/sources/new")({
+  beforeLoad: () => ({
+    crumb: "New Source",
+  }),
   component: SourceNewRoute,
 });
 
