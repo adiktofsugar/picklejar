@@ -3,44 +3,9 @@ import { logger } from "hono/logger";
 import { AwsClient } from "aws4fetch";
 import mime from "mime";
 import { createGraphQLHandler } from "./graphql";
-import type { SourceRow } from "./db-types";
+import { decryptPhotoToken } from "./crypto";
 
 const graphqlEndpoint = "/api/graphql";
-
-// In-memory cache for source data to avoid repeated DB queries during batch requests
-interface CachedSource {
-  source: SourceRow;
-  expiresAt: number;
-}
-
-const sourceCache = new Map<string, CachedSource>();
-const SOURCE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-async function getSourceById(
-  db: D1Database,
-  sourceId: string,
-): Promise<SourceRow | null> {
-  const now = Date.now();
-  const cached = sourceCache.get(sourceId);
-
-  if (cached && cached.expiresAt > now) {
-    return cached.source;
-  }
-
-  const source = await db
-    .prepare("SELECT * FROM sources WHERE id = ?")
-    .bind(sourceId)
-    .first<SourceRow>();
-
-  if (source) {
-    sourceCache.set(sourceId, {
-      source,
-      expiresAt: now + SOURCE_CACHE_TTL_MS,
-    });
-  }
-
-  return source;
-}
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -51,29 +16,30 @@ app.get("/api/test", async (c) => {
 });
 
 app.on(["GET", "POST"], graphqlEndpoint, async (c) => {
-  const handler = createGraphQLHandler(c.env.db, graphqlEndpoint);
+  const handler = createGraphQLHandler(
+    c.env.db,
+    c.env.ENCRYPTION_KEY,
+    graphqlEndpoint,
+  );
   return handler.fetch(c.req.raw, c.env);
 });
 
-app.get("/api/photos/:source_id/:key{.+}", async (c) => {
-  const { source_id, key } = c.req.param();
+app.get("/api/photos/:token", async (c) => {
+  const { token } = c.req.param();
 
-  const source = await getSourceById(c.env.db, source_id);
-
-  if (!source) {
-    return c.json({ error: "Source not found" }, 404);
+  let payload;
+  try {
+    payload = await decryptPhotoToken(token, c.env.ENCRYPTION_KEY);
+  } catch {
+    return c.json({ error: "Invalid token" }, 400);
   }
 
-  if (source.kind !== "s3") {
-    return c.json({ error: "Unsupported source type" }, 400);
-  }
-
-  const url = `https://${source.s3_endpoint}/${source.s3_bucket}/${key}`;
+  const url = `https://${payload.s3Endpoint}/${payload.s3Bucket}/${payload.key}`;
 
   const aws = new AwsClient({
-    accessKeyId: source.s3_api_key,
-    secretAccessKey: source.s3_api_key_secret,
-    region: source.s3_region,
+    accessKeyId: payload.s3ApiKey,
+    secretAccessKey: payload.s3ApiKeySecret,
+    region: payload.s3Region,
     service: "s3",
   });
 
@@ -88,7 +54,7 @@ app.get("/api/photos/:source_id/:key{.+}", async (c) => {
 
   return c.body(s3Response.body!, {
     headers: {
-      "Content-Type": mime.getType(key) || "application/octet-stream",
+      "Content-Type": mime.getType(payload.key) || "application/octet-stream",
       "Cache-Control": "public, max-age=31536000",
     },
   });

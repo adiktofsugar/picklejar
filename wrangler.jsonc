@@ -15,4 +15,8 @@
       "database_id": "b267ac09-ea43-4716-8c26-1f275f67f886",
     },
   ],
+  // ENCRYPTION_KEY should be set via: wrangler secret put ENCRYPTION_KEY
+  "vars": {
+    "ENCRYPTION_KEY": "dev-only-replace-in-production",
+  },
 }

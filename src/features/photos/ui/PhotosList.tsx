@@ -12,7 +12,7 @@ export function PhotosList() {
         {data.photos.edges.map((edge) => {
           return (
             <li key={edge.node.id}>
-              <PhotoItem key={edge.node.key} sourceId={edge.node.sourceId} />
+              <PhotoItem token={edge.node.token} />
             </li>
           );
         })}

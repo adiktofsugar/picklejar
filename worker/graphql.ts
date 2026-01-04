@@ -1,16 +1,14 @@
 import { createSchema, createYoga } from "graphql-yoga";
-import type {
-  Photo,
-  PhotoEdge,
-  Resolvers,
-} from "./generated/graphql-resolvers";
+import type { PhotoEdge, Resolvers } from "./generated/graphql-resolvers";
 import type { SourceRow, ObjectRow, SourceRowResolver } from "./db-types";
 import typeDefs from "../schema.graphqls?raw";
 import { GraphQLError } from "graphql";
 import { DbCursor } from "./DbCursor";
+import { encryptPhotoToken } from "./crypto";
 
 export interface GraphQLContext {
   db: D1Database;
+  encryptionKey: string;
 }
 
 function toSourceResolver(row: SourceRow): SourceRowResolver {
@@ -35,18 +33,25 @@ export const resolvers: Resolvers<GraphQLContext> = {
       }
       return toSourceResolver(result);
     },
-    photos: async (_parent, { cursor: cursorEncoded, first }, { db }) => {
+    photos: async (
+      _parent,
+      { cursor: cursorEncoded, first },
+      { db, encryptionKey },
+    ) => {
       const cursor = cursorEncoded ? DbCursor.decode(cursorEncoded) : null;
       const limit = first || 100;
 
+      // Join photos with sources to get all data needed for tokens
       let query: D1PreparedStatement;
       if (cursor) {
         query = db
           .prepare(
             `
-          SELECT * FROM photos 
-          WHERE (id, date_created) < (?, ?)
-          ORDER BY date_created DESC
+          SELECT p.*, s.*
+          FROM photos p
+          JOIN sources s ON p.source_id = s.id
+          WHERE (p.id, p.date_created) < (?, ?)
+          ORDER BY p.date_created DESC
           LIMIT ?
         `,
           )
@@ -55,31 +60,50 @@ export const resolvers: Resolvers<GraphQLContext> = {
         query = db
           .prepare(
             `
-          SELECT * FROM photos 
-          ORDER BY date_created DESC
+          SELECT p.*, s.*
+          FROM photos p
+          JOIN sources s ON p.source_id = s.id
+          ORDER BY p.date_created DESC
           LIMIT ?
         `,
           )
           .bind(limit + 1);
       }
 
-      const result = await query.all<ObjectRow>();
+      type PhotoWithSource = ObjectRow & SourceRow;
+
+      const result = await query.all<PhotoWithSource>();
       const hasNextPage = result.results.length > limit;
-      const edges: PhotoEdge[] = result.results.slice(0, limit).map((row) => {
-        const node: Photo = {
-          id: String(row.id),
-          key: row.key,
-          sourceId: row.source_id,
-        };
-        return {
-          node,
-          cursor: new DbCursor(row.id, row.date_created).encode(),
-        };
-      });
+
+      const edges: PhotoEdge[] = await Promise.all(
+        result.results.slice(0, limit).map(async (row) => {
+          const token = await encryptPhotoToken(
+            {
+              sourceId: row.source_id,
+              key: row.key,
+              s3Endpoint: row.s3_endpoint,
+              s3Region: row.s3_region,
+              s3Bucket: row.s3_bucket,
+              s3ApiKey: row.s3_api_key,
+              s3ApiKeySecret: row.s3_api_key_secret,
+            },
+            encryptionKey,
+          );
+
+          return {
+            node: {
+              id: String(row.id),
+              token,
+            },
+            cursor: new DbCursor(row.id, row.date_created).encode(),
+          };
+        }),
+      );
+
       return {
         edges,
         pageInfo: {
-          endCursor: edges[-1].cursor,
+          endCursor: edges[edges.length - 1]?.cursor,
           hasNextPage,
         },
       };
@@ -183,10 +207,14 @@ export const resolvers: Resolvers<GraphQLContext> = {
   },
 };
 
-export function createGraphQLHandler(db: D1Database, graphqlEndpoint: string) {
+export function createGraphQLHandler(
+  db: D1Database,
+  encryptionKey: string,
+  graphqlEndpoint: string,
+) {
   return createYoga<GraphQLContext>({
     schema: createSchema({ typeDefs, resolvers }),
-    context: { db },
+    context: { db, encryptionKey },
     graphqlEndpoint,
     fetchAPI: {
       Response,

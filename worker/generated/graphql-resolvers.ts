@@ -61,8 +61,7 @@ export type PageInfo = {
 export type Photo = {
   __typename?: 'Photo';
   id: Scalars['ID']['output'];
-  key: Scalars['String']['output'];
-  sourceId: Scalars['Int']['output'];
+  token: Scalars['String']['output'];
 };
 
 export type PhotoConnection = {
@@ -262,8 +261,7 @@ export type PageInfoResolvers<ContextType = any, ParentType extends ResolversPar
 
 export type PhotoResolvers<ContextType = any, ParentType extends ResolversParentTypes['Photo'] = ResolversParentTypes['Photo']> = ResolversObject<{
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  key?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  sourceId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  token?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type PhotoConnectionResolvers<ContextType = any, ParentType extends ResolversParentTypes['PhotoConnection'] = ResolversParentTypes['PhotoConnection']> = ResolversObject<{

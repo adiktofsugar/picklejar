@@ -3,8 +3,7 @@ query GetPhotos($cursor: String) {
     edges {
       node {
         id
-        key
-        sourceId
+        token
       }
     }
     pageInfo {
