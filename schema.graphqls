@@ -6,7 +6,7 @@ schema {
 type Query {
   sources: [Source!]!
   source(id: ID!): Source!
-  photos: [S3Object!]!
+  photos(first: Int, cursor: String): PhotoConnection!
 }
 
 input CreateS3SourceInput {
@@ -60,4 +60,21 @@ type S3Object {
   date_created: Int!
   lat: Float
   lng: Float
+}
+type PageInfo {
+  hasNextPage: Boolean
+  endCursor: String
+}
+type Photo {
+  id: ID!
+  key: String!
+  sourceId: Int!
+}
+type PhotoEdge {
+  cursor: String!
+  node: Photo!
+}
+type PhotoConnection {
+  edges: [PhotoEdge!]!
+  pageInfo: PageInfo!
 }

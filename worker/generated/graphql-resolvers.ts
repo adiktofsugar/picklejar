@@ -52,11 +52,42 @@ export type MutationUpdateS3SourceArgs = {
   input: UpdateS3SourceInput;
 };
 
+export type PageInfo = {
+  __typename?: 'PageInfo';
+  endCursor: Maybe<Scalars['String']['output']>;
+  hasNextPage: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type Photo = {
+  __typename?: 'Photo';
+  id: Scalars['ID']['output'];
+  key: Scalars['String']['output'];
+  sourceId: Scalars['Int']['output'];
+};
+
+export type PhotoConnection = {
+  __typename?: 'PhotoConnection';
+  edges: Array<PhotoEdge>;
+  pageInfo: PageInfo;
+};
+
+export type PhotoEdge = {
+  __typename?: 'PhotoEdge';
+  cursor: Scalars['String']['output'];
+  node: Photo;
+};
+
 export type Query = {
   __typename?: 'Query';
-  photos: Array<S3Object>;
+  photos: PhotoConnection;
   source: Source;
   sources: Array<Source>;
+};
+
+
+export type QueryPhotosArgs = {
+  cursor: InputMaybe<Scalars['String']['input']>;
+  first: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -185,6 +216,10 @@ export type ResolversTypes = ResolversObject<{
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
+  PageInfo: ResolverTypeWrapper<PageInfo>;
+  Photo: ResolverTypeWrapper<Photo>;
+  PhotoConnection: ResolverTypeWrapper<PhotoConnection>;
+  PhotoEdge: ResolverTypeWrapper<PhotoEdge>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   S3Object: ResolverTypeWrapper<ObjectRowResolver>;
   S3Source: ResolverTypeWrapper<SourceRowResolver>;
@@ -202,6 +237,10 @@ export type ResolversParentTypes = ResolversObject<{
   ID: Scalars['ID']['output'];
   Int: Scalars['Int']['output'];
   Mutation: Record<PropertyKey, never>;
+  PageInfo: PageInfo;
+  Photo: Photo;
+  PhotoConnection: PhotoConnection;
+  PhotoEdge: PhotoEdge;
   Query: Record<PropertyKey, never>;
   S3Object: ObjectRowResolver;
   S3Source: SourceRowResolver;
@@ -216,8 +255,29 @@ export type MutationResolvers<ContextType = any, ParentType extends ResolversPar
   updateS3Source: Resolver<ResolversTypes['S3Source'], ParentType, ContextType, RequireFields<MutationUpdateS3SourceArgs, 'input'>>;
 }>;
 
+export type PageInfoResolvers<ContextType = any, ParentType extends ResolversParentTypes['PageInfo'] = ResolversParentTypes['PageInfo']> = ResolversObject<{
+  endCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hasNextPage?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+}>;
+
+export type PhotoResolvers<ContextType = any, ParentType extends ResolversParentTypes['Photo'] = ResolversParentTypes['Photo']> = ResolversObject<{
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  key?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  sourceId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type PhotoConnectionResolvers<ContextType = any, ParentType extends ResolversParentTypes['PhotoConnection'] = ResolversParentTypes['PhotoConnection']> = ResolversObject<{
+  edges?: Resolver<Array<ResolversTypes['PhotoEdge']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+}>;
+
+export type PhotoEdgeResolvers<ContextType = any, ParentType extends ResolversParentTypes['PhotoEdge'] = ResolversParentTypes['PhotoEdge']> = ResolversObject<{
+  cursor?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  node?: Resolver<ResolversTypes['Photo'], ParentType, ContextType>;
+}>;
+
 export type QueryResolvers<ContextType = any, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = ResolversObject<{
-  photos: Resolver<Array<ResolversTypes['S3Object']>, ParentType, ContextType>;
+  photos: Resolver<ResolversTypes['PhotoConnection'], ParentType, ContextType, QueryPhotosArgs>;
   source: Resolver<ResolversTypes['Source'], ParentType, ContextType, RequireFields<QuerySourceArgs, 'id'>>;
   sources: Resolver<Array<ResolversTypes['Source']>, ParentType, ContextType>;
 }>;
@@ -248,6 +308,10 @@ export type SourceResolvers<ContextType = any, ParentType extends ResolversParen
 
 export type Resolvers<ContextType = any> = ResolversObject<{
   Mutation?: MutationResolvers<ContextType>;
+  PageInfo?: PageInfoResolvers<ContextType>;
+  Photo?: PhotoResolvers<ContextType>;
+  PhotoConnection?: PhotoConnectionResolvers<ContextType>;
+  PhotoEdge?: PhotoEdgeResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   S3Object?: S3ObjectResolvers<ContextType>;
   S3Source?: S3SourceResolvers<ContextType>;

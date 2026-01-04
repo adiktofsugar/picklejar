@@ -1,0 +1,15 @@
+query GetPhotos($cursor: String) {
+  photos(first: 100, cursor: $cursor) {
+    edges {
+      node {
+        id
+        key
+        sourceId
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

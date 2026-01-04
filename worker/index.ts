@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { AwsClient } from "aws4fetch";
+import mime from "mime";
 import { createGraphQLHandler } from "./graphql";
+import type { SourceRow } from "./db-types";
 
 const graphqlEndpoint = "/api/graphql";
 
@@ -16,6 +18,48 @@ app.get("/api/test", async (c) => {
 app.on(["GET", "POST"], graphqlEndpoint, async (c) => {
   const handler = createGraphQLHandler(c.env.db, graphqlEndpoint);
   return handler.fetch(c.req.raw, c.env);
+});
+
+app.get("/api/photos/:source_id/:key{.+}", async (c) => {
+  const { source_id, key } = c.req.param();
+
+  const source = await c.env.db
+    .prepare("SELECT * FROM sources WHERE id = ?")
+    .bind(source_id)
+    .first<SourceRow>();
+
+  if (!source) {
+    return c.json({ error: "Source not found" }, 404);
+  }
+
+  if (source.kind !== "s3") {
+    return c.json({ error: "Unsupported source type" }, 400);
+  }
+
+  const url = `https://${source.s3_endpoint}/${source.s3_bucket}/${key}`;
+
+  const aws = new AwsClient({
+    accessKeyId: source.s3_api_key,
+    secretAccessKey: source.s3_api_key_secret,
+    region: source.s3_region,
+    service: "s3",
+  });
+
+  const s3Response = await aws.fetch(url);
+
+  if (!s3Response.ok) {
+    return c.json(
+      { error: "Failed to fetch image" },
+      s3Response.status as 400 | 404 | 500,
+    );
+  }
+
+  return c.body(s3Response.body!, {
+    headers: {
+      "Content-Type": mime.getType(key) || "application/octet-stream",
+      "Cache-Control": "public, max-age=31536000",
+    },
+  });
 });
 
 // TODO: this will likely be a specific source in the end

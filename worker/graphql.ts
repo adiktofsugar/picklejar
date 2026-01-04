@@ -1,23 +1,19 @@
 import { createSchema, createYoga } from "graphql-yoga";
-import type { Resolvers } from "./generated/graphql-resolvers";
 import type {
-  SourceRow,
-  ObjectRow,
-  SourceRowResolver,
-  ObjectRowResolver,
-} from "./db-types";
+  Photo,
+  PhotoEdge,
+  Resolvers,
+} from "./generated/graphql-resolvers";
+import type { SourceRow, ObjectRow, SourceRowResolver } from "./db-types";
 import typeDefs from "../schema.graphqls?raw";
 import { GraphQLError } from "graphql";
+import { DbCursor } from "./DbCursor";
 
 export interface GraphQLContext {
   db: D1Database;
 }
 
 function toSourceResolver(row: SourceRow): SourceRowResolver {
-  return { ...row, id: String(row.id) };
-}
-
-function toObjectResolver(row: ObjectRow): ObjectRowResolver {
   return { ...row, id: String(row.id) };
 }
 
@@ -39,11 +35,54 @@ export const resolvers: Resolvers<GraphQLContext> = {
       }
       return toSourceResolver(result);
     },
-    photos: async (_parent, _args, context) => {
-      const result = await context.db
-        .prepare("SELECT * FROM objects")
-        .all<ObjectRow>();
-      return result.results.map(toObjectResolver);
+    photos: async (_parent, { cursor: cursorEncoded, first }, { db }) => {
+      const cursor = cursorEncoded ? DbCursor.decode(cursorEncoded) : null;
+      const limit = first || 100;
+
+      let query: D1PreparedStatement;
+      if (cursor) {
+        query = db
+          .prepare(
+            `
+          SELECT * FROM photos 
+          WHERE (id, date_created) < (?, ?)
+          ORDER BY date_created DESC
+          LIMIT ?
+        `,
+          )
+          .bind(cursor.id, cursor.dateCreated, limit + 1);
+      } else {
+        query = db
+          .prepare(
+            `
+          SELECT * FROM photos 
+          ORDER BY date_created DESC
+          LIMIT ?
+        `,
+          )
+          .bind(limit + 1);
+      }
+
+      const result = await query.all<ObjectRow>();
+      const hasNextPage = result.results.length > limit;
+      const edges: PhotoEdge[] = result.results.slice(0, limit).map((row) => {
+        const node: Photo = {
+          id: String(row.id),
+          key: row.key,
+          sourceId: row.source_id,
+        };
+        return {
+          node,
+          cursor: new DbCursor(row.id, row.date_created).encode(),
+        };
+      });
+      return {
+        edges,
+        pageInfo: {
+          endCursor: edges[-1].cursor,
+          hasNextPage,
+        },
+      };
     },
   },
   Mutation: {
