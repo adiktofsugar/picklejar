@@ -7,6 +7,41 @@ import type { SourceRow } from "./db-types";
 
 const graphqlEndpoint = "/api/graphql";
 
+// In-memory cache for source data to avoid repeated DB queries during batch requests
+interface CachedSource {
+  source: SourceRow;
+  expiresAt: number;
+}
+
+const sourceCache = new Map<string, CachedSource>();
+const SOURCE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+async function getSourceById(
+  db: D1Database,
+  sourceId: string,
+): Promise<SourceRow | null> {
+  const now = Date.now();
+  const cached = sourceCache.get(sourceId);
+
+  if (cached && cached.expiresAt > now) {
+    return cached.source;
+  }
+
+  const source = await db
+    .prepare("SELECT * FROM sources WHERE id = ?")
+    .bind(sourceId)
+    .first<SourceRow>();
+
+  if (source) {
+    sourceCache.set(sourceId, {
+      source,
+      expiresAt: now + SOURCE_CACHE_TTL_MS,
+    });
+  }
+
+  return source;
+}
+
 const app = new Hono<{ Bindings: Env }>();
 
 app.use(logger());
@@ -23,10 +58,7 @@ app.on(["GET", "POST"], graphqlEndpoint, async (c) => {
 app.get("/api/photos/:source_id/:key{.+}", async (c) => {
   const { source_id, key } = c.req.param();
 
-  const source = await c.env.db
-    .prepare("SELECT * FROM sources WHERE id = ?")
-    .bind(source_id)
-    .first<SourceRow>();
+  const source = await getSourceById(c.env.db, source_id);
 
   if (!source) {
     return c.json({ error: "Source not found" }, 404);
