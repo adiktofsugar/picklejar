@@ -52,7 +52,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
         .prepare(
           `INSERT INTO sources (name, kind, s3_endpoint, s3_region, s3_bucket, s3_api_key, s3_api_key_secret)
            VALUES (?, 'S3', ?, ?, ?, ?, ?)
-           RETURNING *`
+           RETURNING *`,
         )
         .bind(
           input.name,
@@ -60,7 +60,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
           input.s3_region,
           input.s3_bucket,
           input.s3_api_key,
-          input.s3_api_key_secret
+          input.s3_api_key_secret,
         )
         .first<SourceRow>();
       if (!result) {
@@ -101,7 +101,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
 
       const result = await context.db
         .prepare(
-          `UPDATE sources SET ${updates.join(", ")} WHERE id = ? RETURNING *`
+          `UPDATE sources SET ${updates.join(", ")} WHERE id = ? RETURNING *`,
         )
         .bind(...values)
         .first<SourceRow>();
@@ -136,7 +136,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
         .first<SourceRow>();
       if (!result) {
         throw new GraphQLError(
-          `Could not find source with id: ${parent.source_id}`
+          `Could not find source with id: ${parent.source_id}`,
         );
       }
       return toSourceResolver(result);

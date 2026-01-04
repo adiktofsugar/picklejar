@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from "@apollo/client/react";
-import { GetSourcesDocument } from "../../../generated/graphql-operations";
+import { GetSourcesDocument } from "@/generated/graphql-operations";
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 

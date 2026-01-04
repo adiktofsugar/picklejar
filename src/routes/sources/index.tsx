@@ -1,15 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  SourceErrorFallback,
-  SourceList,
-  SourceLoading,
-} from "@/features/sources";
-import { ErrorBoundary } from "react-error-boundary";
+import { SourceList, SourceLoading } from "@/features/sources";
 import { Suspense } from "react";
+import { ErrorBoundary } from "@/shared/ErrorBoundary";
 
 export const Route = createFileRoute("/sources/")({
   component: () => (
-    <ErrorBoundary FallbackComponent={SourceErrorFallback}>
+    <ErrorBoundary>
       <Suspense fallback={<SourceLoading message="Loading sources list" />}>
         <SourceList />
       </Suspense>

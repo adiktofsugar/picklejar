@@ -1,12 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import {
-  SourceDetail,
-  SourceLoading,
-  SourceErrorFallback,
-} from "@/features/sources";
+import { SourceDetail, SourceLoading } from "@/features/sources";
 import { Suspense } from "react";
 import { GetSourcesIdDataDocument } from "@/generated/graphql-operations";
-import { ErrorBoundary } from "react-error-boundary";
+import { ErrorBoundary } from "@/shared/ErrorBoundary";
 
 export const Route = createFileRoute("/sources/$id")({
   async beforeLoad({ params: { id }, context: { client } }) {
@@ -29,7 +25,7 @@ export const Route = createFileRoute("/sources/$id")({
 function SourceDetailRoute() {
   const params = Route.useParams();
   return (
-    <ErrorBoundary FallbackComponent={SourceErrorFallback}>
+    <ErrorBoundary>
       <Suspense fallback={<SourceLoading message="Loading source" />}>
         <SourceDetail id={params.id} />
       </Suspense>

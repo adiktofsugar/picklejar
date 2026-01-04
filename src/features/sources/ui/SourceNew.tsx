@@ -1,7 +1,10 @@
 import { useMutation } from "@apollo/client/react";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { GenericError } from "../../../shared/GenericError";
-import { CreateSourceDocument } from "../../../generated/graphql-operations";
+import {
+  CreateSourceDocument,
+  GetSourcesDocument,
+} from "../../../generated/graphql-operations";
 import { Navigate } from "@tanstack/react-router";
 
 type Inputs = {
@@ -20,8 +23,12 @@ export function SourceNew() {
     formState: { errors },
   } = useForm<Inputs>();
 
-  const [createSource, { called, error, loading, reset }] =
-    useMutation(CreateSourceDocument);
+  const [createSource, { called, error, loading }] = useMutation(
+    CreateSourceDocument,
+    {
+      refetchQueries: [GetSourcesDocument],
+    },
+  );
 
   const onSubmit: SubmitHandler<Inputs> = (data) => {
     createSource({
@@ -38,23 +45,8 @@ export function SourceNew() {
     });
   };
 
-  if (called && error) {
-    return (
-      <div>
-        <GenericError message={error.message} />
-        <div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              reset();
-            }}
-          >
-            Try again
-          </button>
-        </div>
-      </div>
-    );
+  if (error) {
+    throw error;
   }
 
   if (called) {

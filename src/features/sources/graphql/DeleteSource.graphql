@@ -1,0 +1,5 @@
+mutation DeleteSource($input: DeleteS3SourceInput!) {
+  deleteS3Source(input: $input) {
+    id
+  }
+}
