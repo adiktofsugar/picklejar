@@ -53,14 +53,6 @@ type S3Source implements Source {
   s3_api_key_secret: String!
 }
 
-type S3Object {
-  id: ID!
-  source: S3Source!
-  key: String!
-  date_created: Int!
-  lat: Float
-  lng: Float
-}
 type PageInfo {
   hasNextPage: Boolean
   endCursor: String
@@ -68,6 +60,9 @@ type PageInfo {
 type Photo {
   id: ID!
   token: String!
+  date_created: Int!
+  lat: Float
+  lng: Float
 }
 type PhotoEdge {
   cursor: String!

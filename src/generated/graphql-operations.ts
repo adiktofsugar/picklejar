@@ -58,7 +58,10 @@ export type PageInfo = {
 
 export type Photo = {
   __typename?: 'Photo';
+  date_created: Scalars['Int']['output'];
   id: Scalars['ID']['output'];
+  lat: Maybe<Scalars['Float']['output']>;
+  lng: Maybe<Scalars['Float']['output']>;
   token: Scalars['String']['output'];
 };
 
@@ -90,16 +93,6 @@ export type QueryPhotosArgs = {
 
 export type QuerySourceArgs = {
   id: Scalars['ID']['input'];
-};
-
-export type S3Object = {
-  __typename?: 'S3Object';
-  date_created: Scalars['Int']['output'];
-  id: Scalars['ID']['output'];
-  key: Scalars['String']['output'];
-  lat: Maybe<Scalars['Float']['output']>;
-  lng: Maybe<Scalars['Float']['output']>;
-  source: S3Source;
 };
 
 export type S3Source = Source & {

@@ -1,82 +1,68 @@
 import { createSchema, createYoga } from "graphql-yoga";
+import type { Kysely } from "kysely";
 import type { PhotoEdge, Resolvers } from "./generated/graphql-resolvers";
-import type { SourceRow, ObjectRow, SourceRowResolver } from "./db-types";
 import typeDefs from "../schema.graphqls?raw";
 import { GraphQLError } from "graphql";
 import { DbCursor } from "./DbCursor";
 import { encryptPhotoToken } from "./crypto";
+import { DB } from "./db-types";
 
 export interface GraphQLContext {
-  db: D1Database;
+  db: Kysely<DB>;
   encryptionKey: string;
-}
-
-function toSourceResolver(row: SourceRow): SourceRowResolver {
-  return { ...row, id: String(row.id) };
 }
 
 export const resolvers: Resolvers<GraphQLContext> = {
   Query: {
-    sources: async (_parent, _args, context) => {
-      const result = await context.db
-        .prepare("SELECT * FROM sources")
-        .all<SourceRow>();
-      return result.results.map(toSourceResolver);
+    sources: async (_parent, _args, { db }) => {
+      const results = await db.selectFrom("sources").selectAll().execute();
+      return results;
     },
-    source: async (_parent, { id }, context) => {
-      const result = await context.db
-        .prepare("SELECT * FROM sources WHERE id = ?")
-        .bind(id)
-        .first<SourceRow>();
+    source: async (_parent, { id }, { db }) => {
+      const result = await db
+        .selectFrom("sources")
+        .selectAll()
+        .where("id", "=", Number(id))
+        .executeTakeFirst();
       if (!result) {
         throw new GraphQLError(`Could not find source with id: ${id}`);
       }
-      return toSourceResolver(result);
+      return result;
     },
     photos: async (
       _parent,
       { cursor: cursorEncoded, first },
-      { db, encryptionKey },
+      { db, encryptionKey }
     ) => {
       const cursor = cursorEncoded ? DbCursor.decode(cursorEncoded) : null;
       const limit = first || 100;
 
-      // Join photos with sources to get all data needed for tokens
-      let query: D1PreparedStatement;
+      // Join objects with sources to get all data needed for tokens
+      let query = db
+        .selectFrom("objects as o")
+        .innerJoin("sources as s", "o.source_id", "s.id")
+        .selectAll("o")
+        .selectAll("s")
+        .orderBy("o.date_created", "desc")
+        .limit(limit + 1);
+
       if (cursor) {
-        query = db
-          .prepare(
-            `
-          SELECT p.*, s.*
-          FROM photos p
-          JOIN sources s ON p.source_id = s.id
-          WHERE (p.id, p.date_created) < (?, ?)
-          ORDER BY p.date_created DESC
-          LIMIT ?
-        `,
-          )
-          .bind(cursor.id, cursor.dateCreated, limit + 1);
-      } else {
-        query = db
-          .prepare(
-            `
-          SELECT p.*, s.*
-          FROM photos p
-          JOIN sources s ON p.source_id = s.id
-          ORDER BY p.date_created DESC
-          LIMIT ?
-        `,
-          )
-          .bind(limit + 1);
+        query = query.where((eb) =>
+          eb.or([
+            eb("o.date_created", "<", cursor.dateCreated),
+            eb.and([
+              eb("o.date_created", "=", cursor.dateCreated),
+              eb("o.id", "<", cursor.id),
+            ]),
+          ])
+        );
       }
 
-      type PhotoWithSource = ObjectRow & SourceRow;
-
-      const result = await query.all<PhotoWithSource>();
-      const hasNextPage = result.results.length > limit;
+      const results = await query.execute();
+      const hasNextPage = results.length > limit;
 
       const edges: PhotoEdge[] = await Promise.all(
-        result.results.slice(0, limit).map(async (row) => {
+        results.slice(0, limit).map(async (row) => {
           const token = await encryptPhotoToken(
             {
               sourceId: row.source_id,
@@ -87,17 +73,20 @@ export const resolvers: Resolvers<GraphQLContext> = {
               s3ApiKey: row.s3_api_key,
               s3ApiKeySecret: row.s3_api_key_secret,
             },
-            encryptionKey,
+            encryptionKey
           );
 
           return {
             node: {
               id: String(row.id),
               token,
+              date_created: row.date_created,
+              lat: row.lat,
+              lng: row.lng,
             },
             cursor: new DbCursor(row.id, row.date_created).encode(),
-          };
-        }),
+          } satisfies PhotoEdge;
+        })
       );
 
       return {
@@ -110,107 +99,104 @@ export const resolvers: Resolvers<GraphQLContext> = {
     },
   },
   Mutation: {
-    createS3Source: async (_parent, { input }, context) => {
-      const result = await context.db
-        .prepare(
-          `INSERT INTO sources (name, kind, s3_endpoint, s3_region, s3_bucket, s3_api_key, s3_api_key_secret)
-           VALUES (?, 'S3', ?, ?, ?, ?, ?)
-           RETURNING *`,
-        )
-        .bind(
-          input.name,
-          input.s3_endpoint,
-          input.s3_region,
-          input.s3_bucket,
-          input.s3_api_key,
-          input.s3_api_key_secret,
-        )
-        .first<SourceRow>();
-      if (!result) {
-        throw new GraphQLError("Failed to create source");
-      }
-      return toSourceResolver(result);
+    createS3Source: async (_parent, { input }, { db }) => {
+      const result = await db
+        .insertInto("sources")
+        .values({
+          name: input.name,
+          kind: "S3",
+          s3_endpoint: input.s3_endpoint,
+          s3_region: input.s3_region,
+          s3_bucket: input.s3_bucket,
+          s3_api_key: input.s3_api_key,
+          s3_api_key_secret: input.s3_api_key_secret,
+        })
+        .returningAll()
+        .executeTakeFirstOrThrow();
+      return result;
     },
-    updateS3Source: async (_parent, { input }, context) => {
-      const updates: string[] = [];
-      const values: (string | number)[] = [];
-
-      if (input.name != null) {
-        updates.push("name = ?");
-        values.push(input.name);
-      }
-      if (input.s3_endpoint != null) {
-        updates.push("s3_endpoint = ?");
-        values.push(input.s3_endpoint);
-      }
-      if (input.s3_region != null) {
-        updates.push("s3_region = ?");
-        values.push(input.s3_region);
-      }
-      if (input.s3_bucket != null) {
-        updates.push("s3_bucket = ?");
-        values.push(input.s3_bucket);
-      }
-      if (input.s3_api_key != null) {
-        updates.push("s3_api_key = ?");
-        values.push(input.s3_api_key);
-      }
-      if (input.s3_api_key_secret != null) {
-        updates.push("s3_api_key_secret = ?");
-        values.push(input.s3_api_key_secret);
-      }
-
-      values.push(Number(input.id));
-
-      const result = await context.db
-        .prepare(
-          `UPDATE sources SET ${updates.join(", ")} WHERE id = ? RETURNING *`,
-        )
-        .bind(...values)
-        .first<SourceRow>();
+    updateS3Source: async (_parent, { input }, { db }) => {
+      const result = await db
+        .updateTable("sources")
+        .set({
+          ...(input.name != null && { name: input.name }),
+          ...(input.s3_endpoint != null && { s3_endpoint: input.s3_endpoint }),
+          ...(input.s3_region != null && { s3_region: input.s3_region }),
+          ...(input.s3_bucket != null && { s3_bucket: input.s3_bucket }),
+          ...(input.s3_api_key != null && { s3_api_key: input.s3_api_key }),
+          ...(input.s3_api_key_secret != null && {
+            s3_api_key_secret: input.s3_api_key_secret,
+          }),
+        })
+        .where("id", "=", Number(input.id))
+        .returningAll()
+        .executeTakeFirst();
 
       if (!result) {
         throw new GraphQLError(`Source with id ${input.id} not found`);
       }
 
-      return toSourceResolver(result);
+      return result;
     },
-    deleteS3Source: async (_parent, { input }, context) => {
-      const result = await context.db
-        .prepare("DELETE FROM sources WHERE id = ? RETURNING *")
-        .bind(Number(input.id))
-        .first<SourceRow>();
+    deleteS3Source: async (_parent, { input }, { db }) => {
+      const result = await db
+        .deleteFrom("sources")
+        .where("id", "=", Number(input.id))
+        .returningAll()
+        .executeTakeFirst();
 
       if (!result) {
         throw new GraphQLError(`Source with id ${input.id} not found`);
       }
 
-      return toSourceResolver(result);
+      return result;
     },
   },
   Source: {
-    __resolveType: () => "S3Source",
-  },
-  S3Object: {
-    source: async (parent, _args, context) => {
-      const result = await context.db
-        .prepare("SELECT * FROM sources WHERE id = ?")
-        .bind(parent.source_id)
-        .first<SourceRow>();
-      if (!result) {
-        throw new GraphQLError(
-          `Could not find source with id: ${parent.source_id}`,
-        );
+    __resolveType: async (parent) => {
+      if (parent.kind === "S3") {
+        return "S3Source" as const;
       }
-      return toSourceResolver(result);
+      throw new GraphQLError(
+        `Can not determing type name of source with kind ${parent.kind}`
+      );
     },
+  },
+  // Required because I customized S3Source to return a custom object that has int ids
+  S3Source: {
+    id: (p) => String(p.id),
+    name: (p) => p.name,
+    s3_endpoint: (p) => p.s3_endpoint,
+    s3_region: (p) => p.s3_region,
+    s3_bucket: (p) => p.s3_bucket,
+    s3_api_key: (p) => p.s3_api_key,
+    s3_api_key_secret: (p) => p.s3_api_key_secret,
+  },
+  PageInfo: {
+    endCursor: (p) => p.endCursor,
+    hasNextPage: (p) => p.hasNextPage,
+  },
+  Photo: {
+    id: (p) => p.id,
+    token: (p) => p.token,
+    date_created: (p) => p.date_created,
+    lat: (p) => p.lat,
+    lng: (p) => p.lng,
+  },
+  PhotoEdge: {
+    cursor: (p) => p.cursor,
+    node: (p) => p.node,
+  },
+  PhotoConnection: {
+    edges: (p) => p.edges,
+    pageInfo: (p) => p.pageInfo,
   },
 };
 
 export function createGraphQLHandler(
-  db: D1Database,
+  db: Kysely<DB>,
   encryptionKey: string,
-  graphqlEndpoint: string,
+  graphqlEndpoint: string
 ) {
   return createYoga<GraphQLContext>({
     schema: createSchema({ typeDefs, resolvers }),

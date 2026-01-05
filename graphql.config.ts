@@ -9,20 +9,23 @@ const codegen: CodegenConfig = {
       plugins: ["typescript", "typescript-resolvers"],
       config: {
         useIndexSignature: true,
-        avoidOptionals: {
-          defaultValue: true,
-          field: true,
-          inputValue: true,
-          mutation: true,
-          query: true,
-          object: true,
-          // resolvers are optional, otherwise we need to make one for every key
-          resolvers: false,
-          subscription: true,
-        },
+        // I need this for correct type safety when using mapped types,
+        //   otherwise I can end up not defining a resolver when I need to
+        // For example, since I map the S3Source to an actual row, the "id" property
+        //   will end up being a number instead of a string, so I need to add the resolver
+        //   ...but I won't get an error for not having the mapped resolver if its optional
+        avoidOptionals: true,
+        // this replaces the types the resolvers are expected to return, so that a resolver
+        //   can return the actual db query instead of a fully resolved object, which allows
+        //   the resolver nesting to work as expected
+        // Example:
+        // query { source: Source } in graphql schema
+        // mappers.Source = MySource
+        // return type of `query.source` resolver is MySource
+        // parent type of Source resolver is MySource
+        // now the Source resolver can convert the db response to what it actually needs to be
         mappers: {
-          S3Object: "../db-types#ObjectRowResolver",
-          S3Source: "../db-types#SourceRowResolver",
+          S3Source: "../db-types#SelectableS3SourceRow",
         },
       } satisfies TypeScriptResolversPluginConfig,
     },

@@ -1,31 +1,26 @@
-// Database row types (match the actual DB schema)
+/**
+ * This file exists because the type generator can only be configured so much
+ */
+import { Selectable } from "kysely";
+import { Objects, Sources, DB as BaseDB } from "./generated/db-types";
 
-export interface SourceRow {
-  id: number;
-  name: string;
-  kind: string;
+export interface S3SourceRow extends Sources {
+  kind: "S3";
   s3_endpoint: string;
   s3_region: string;
   s3_bucket: string;
   s3_api_key: string;
   s3_api_key_secret: string;
 }
+export type SourceRow = S3SourceRow;
 
-export interface ObjectRow {
-  id: number;
-  key: string;
-  source_id: number;
-  date_created: number;
-  lat: number | null;
-  lng: number | null;
+export type S3ObjectRow = Objects;
+export type ObjectRow = S3ObjectRow;
+
+export interface DB extends BaseDB {
+  objects: ObjectRow;
+  sources: SourceRow;
 }
 
-// Resolver types (id converted to string for GraphQL)
-
-export interface SourceRowResolver extends Omit<SourceRow, "id"> {
-  id: string;
-}
-
-export interface ObjectRowResolver extends Omit<ObjectRow, "id"> {
-  id: string;
-}
+// I need the Selectable wrapper for the custom types that the resolvers _actually_ return
+export type SelectableS3SourceRow = Selectable<S3SourceRow>;

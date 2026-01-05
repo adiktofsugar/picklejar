@@ -1,0 +1,3 @@
+outFile: "./worker/generated/db-types.ts"
+dialect: "sqlite"
+excludePattern: "{_cf_,d1_}*"
