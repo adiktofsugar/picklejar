@@ -24,3 +24,9 @@ export interface DB extends BaseDB {
 
 // I need the Selectable wrapper for the custom types that the resolvers _actually_ return
 export type SelectableS3SourceRow = Selectable<S3SourceRow>;
+export type PhotoConnectionRaw = {
+  results: Array<
+    Selectable<ObjectRow> & Selectable<SourceRow> & { object_id: number }
+  >;
+  hasNextPage: boolean;
+};

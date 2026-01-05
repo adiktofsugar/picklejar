@@ -29,11 +29,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
       }
       return result;
     },
-    photos: async (
-      _parent,
-      { cursor: cursorEncoded, first },
-      { db, encryptionKey }
-    ) => {
+    photos: async (_parent, { cursor: cursorEncoded, first }, { db }) => {
       const cursor = cursorEncoded ? DbCursor.decode(cursorEncoded) : null;
       const limit = first || 100;
 
@@ -43,13 +39,16 @@ export const resolvers: Resolvers<GraphQLContext> = {
         .innerJoin("sources as s", "o.source_id", "s.id")
         .selectAll("o")
         .selectAll("s")
+        .select("o.id as object_id") // id is for sources since it's second
         .orderBy("o.date_created", "desc")
         .limit(limit + 1);
 
       if (cursor) {
         query = query.where((eb) =>
           eb.or([
+            // older than the cursor object
             eb("o.date_created", "<", cursor.dateCreated),
+            // or the same date, but created after (id is auto increment)
             eb.and([
               eb("o.date_created", "=", cursor.dateCreated),
               eb("o.id", "<", cursor.id),
@@ -61,40 +60,9 @@ export const resolvers: Resolvers<GraphQLContext> = {
       const results = await query.execute();
       const hasNextPage = results.length > limit;
 
-      const edges: PhotoEdge[] = await Promise.all(
-        results.slice(0, limit).map(async (row) => {
-          const token = await encryptPhotoToken(
-            {
-              sourceId: row.source_id,
-              key: row.key,
-              s3Endpoint: row.s3_endpoint,
-              s3Region: row.s3_region,
-              s3Bucket: row.s3_bucket,
-              s3ApiKey: row.s3_api_key,
-              s3ApiKeySecret: row.s3_api_key_secret,
-            },
-            encryptionKey
-          );
-
-          return {
-            node: {
-              id: String(row.id),
-              token,
-              date_created: row.date_created,
-              lat: row.lat,
-              lng: row.lng,
-            },
-            cursor: new DbCursor(row.id, row.date_created).encode(),
-          } satisfies PhotoEdge;
-        })
-      );
-
       return {
-        edges,
-        pageInfo: {
-          endCursor: edges[edges.length - 1]?.cursor,
-          hasNextPage,
-        },
+        results: results.slice(0, limit),
+        hasNextPage,
       };
     },
   },
@@ -154,6 +122,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
   },
   Source: {
     __resolveType: async (parent) => {
+      // I will theoretically have more than one kind in the future
       if (parent.kind === "S3") {
         return "S3Source" as const;
       }
@@ -188,8 +157,44 @@ export const resolvers: Resolvers<GraphQLContext> = {
     node: (p) => p.node,
   },
   PhotoConnection: {
-    edges: (p) => p.edges,
-    pageInfo: (p) => p.pageInfo,
+    edges: async (p, _args, { encryptionKey }) => {
+      return Promise.all(
+        p.results.map(async (row) => {
+          const token = await encryptPhotoToken(
+            {
+              sourceId: row.source_id,
+              key: row.key,
+              s3Endpoint: row.s3_endpoint,
+              s3Region: row.s3_region,
+              s3Bucket: row.s3_bucket,
+              s3ApiKey: row.s3_api_key,
+              s3ApiKeySecret: row.s3_api_key_secret,
+            },
+            encryptionKey
+          );
+
+          return {
+            node: {
+              id: String(row.object_id),
+              token,
+              date_created: row.date_created,
+              lat: row.lat,
+              lng: row.lng,
+            },
+            cursor: new DbCursor(row.object_id, row.date_created).encode(),
+          } satisfies PhotoEdge;
+        })
+      );
+    },
+    pageInfo: (p) => {
+      const last = p.results.at(-1);
+      return {
+        hasNextPage: p.hasNextPage,
+        endCursor: last
+          ? new DbCursor(last.object_id, last.date_created).encode()
+          : null,
+      };
+    },
   },
 };
 

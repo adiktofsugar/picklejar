@@ -1,0 +1,4 @@
+{
+  "generatedRouteTree": "./src/generated/routes.ts",
+  "routesDirectory": "./src/routes"
+}

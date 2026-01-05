@@ -1,5 +1,5 @@
 import { GraphQLResolveInfo } from 'graphql';
-import { SelectableS3SourceRow } from '../db-types';
+import { SelectableS3SourceRow, PhotoConnectionRaw } from '../db-types';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -210,7 +210,7 @@ export type ResolversTypes = ResolversObject<{
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
   Photo: ResolverTypeWrapper<Photo>;
-  PhotoConnection: ResolverTypeWrapper<PhotoConnection>;
+  PhotoConnection: ResolverTypeWrapper<PhotoConnectionRaw>;
   PhotoEdge: ResolverTypeWrapper<PhotoEdge>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   S3Source: ResolverTypeWrapper<SelectableS3SourceRow>;
@@ -230,7 +230,7 @@ export type ResolversParentTypes = ResolversObject<{
   Mutation: Record<PropertyKey, never>;
   PageInfo: PageInfo;
   Photo: Photo;
-  PhotoConnection: PhotoConnection;
+  PhotoConnection: PhotoConnectionRaw;
   PhotoEdge: PhotoEdge;
   Query: Record<PropertyKey, never>;
   S3Source: SelectableS3SourceRow;

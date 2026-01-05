@@ -26,6 +26,7 @@ const codegen: CodegenConfig = {
         // now the Source resolver can convert the db response to what it actually needs to be
         mappers: {
           S3Source: "../db-types#SelectableS3SourceRow",
+          PhotoConnection: "../db-types#PhotoConnectionRaw",
         },
       } satisfies TypeScriptResolversPluginConfig,
     },
