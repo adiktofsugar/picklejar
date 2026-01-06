@@ -2,7 +2,7 @@
  * This file exists because the type generator can only be configured so much
  */
 import { Selectable } from "kysely";
-import { Objects, Sources, DB as BaseDB } from "./generated/db-types";
+import { Objects, Photos, Sources, DB as BaseDB } from "./generated/db-types";
 
 export interface S3SourceRow extends Sources {
   kind: "S3";
@@ -17,8 +17,11 @@ export type SourceRow = S3SourceRow;
 export type S3ObjectRow = Objects;
 export type ObjectRow = S3ObjectRow;
 
+export type PhotoRow = Photos;
+
 export interface DB extends BaseDB {
   objects: ObjectRow;
+  photos: PhotoRow;
   sources: SourceRow;
 }
 
@@ -26,7 +29,9 @@ export interface DB extends BaseDB {
 export type SelectableS3SourceRow = Selectable<S3SourceRow>;
 export type PhotoConnectionRaw = {
   results: Array<
-    Selectable<ObjectRow> & Selectable<SourceRow> & { object_id: number }
+    Selectable<ObjectRow> &
+      Selectable<SourceRow> &
+      Pick<PhotoRow, "lat" | "lng"> & { object_id: number }
   >;
   hasNextPage: boolean;
 };

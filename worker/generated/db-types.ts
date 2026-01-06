@@ -11,14 +11,22 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
 
 export interface Objects {
   date_created: number;
+  date_synced: number | null;
+  hash: string | null;
   id: Generated<number>;
   key: string;
-  lat: number | null;
-  lng: number | null;
   source_id: number;
 }
 
+export interface Photos {
+  id: Generated<number | null>;
+  lat: number | null;
+  lng: number | null;
+  object_hash: string;
+}
+
 export interface Sources {
+  date_synced: number | null;
   id: Generated<number>;
   kind: string;
   name: string;
@@ -31,5 +39,6 @@ export interface Sources {
 
 export interface DB {
   objects: Objects;
+  photos: Photos;
   sources: Sources;
 }

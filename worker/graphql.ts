@@ -34,11 +34,14 @@ export const resolvers: Resolvers<GraphQLContext> = {
       const limit = first || 100;
 
       // Join objects with sources to get all data needed for tokens
+      // Left join photos to get lat/lng
       let query = db
         .selectFrom("objects as o")
         .innerJoin("sources as s", "o.source_id", "s.id")
+        .leftJoin("photos as p", "o.hash", "p.object_hash")
         .selectAll("o")
         .selectAll("s")
+        .select(["p.lat", "p.lng"])
         .select("o.id as object_id") // id is for sources since it's second
         .orderBy("o.date_created", "desc")
         .limit(limit + 1);

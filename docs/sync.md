@@ -9,6 +9,16 @@ The syncing mechanism is as follows:
 
 These can be run concurrently, as objects (photos) are relative to a source, and there is no need for multiple sources to all be synced at the same time.
 
+### Same timestamp
+
+if a scheduled run happened at the same time as a user initiated run, they could generate the same timestamp.
+this would mostly be an issue for the problem below, of being a useless run
+ideally there's some way to cancel workflows so 2 can't run at the same time
+
+### Useless run
+
+if a scheduled run happened and then a user initiated run triggered while it was running, it would do extra, pointless work...unless an object was _just_ added.
+
 ## SyncSource (S3)
 
 - listobjects

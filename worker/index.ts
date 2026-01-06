@@ -4,9 +4,7 @@ import { AwsClient } from "aws4fetch";
 import mime from "mime";
 import { createGraphQLHandler } from "./graphql";
 import { decryptPhotoToken } from "./crypto";
-import { DB } from "./db-types";
-import { D1Dialect } from "kysely-d1";
-import { Kysely } from "kysely";
+import { createDb } from "./db";
 
 const graphqlEndpoint = "/api/graphql";
 
@@ -20,9 +18,7 @@ app.get("/api/test", async (c) => {
 
 app.on(["GET", "POST"], graphqlEndpoint, async (c) => {
   const handler = createGraphQLHandler(
-    new Kysely<DB>({
-      dialect: new D1Dialect({ database: c.env.db }),
-    }),
+    createDb(c.env.db),
     c.env.ENCRYPTION_KEY,
     graphqlEndpoint
   );
