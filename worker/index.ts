@@ -20,7 +20,7 @@ app.on(["GET", "POST"], graphqlEndpoint, async (c) => {
   const handler = createGraphQLHandler(
     createDb(c.env.db),
     c.env.ENCRYPTION_KEY,
-    graphqlEndpoint
+    graphqlEndpoint,
   );
   return handler.fetch(c.req.raw);
 });
@@ -52,7 +52,7 @@ app.get("/api/photos/:token", async (c) => {
   if (!s3Response.ok) {
     return c.json(
       { error: "Failed to fetch image" },
-      s3Response.status as 400 | 404 | 500
+      s3Response.status as 400 | 404 | 500,
     );
   }
 

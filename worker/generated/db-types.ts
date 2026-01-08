@@ -18,6 +18,13 @@ export interface Objects {
   source_id: number;
 }
 
+export interface PendingRenameCandidates {
+  candidate_id: number;
+  created_at: number;
+  object_id: number;
+  source_id: number;
+}
+
 export interface Photos {
   id: Generated<number | null>;
   lat: number | null;
@@ -39,6 +46,7 @@ export interface Sources {
 
 export interface DB {
   objects: Objects;
+  pending_rename_candidates: PendingRenameCandidates;
   photos: Photos;
   sources: Sources;
 }

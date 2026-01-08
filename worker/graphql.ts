@@ -35,6 +35,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
 
       // Join objects with sources to get all data needed for tokens
       // Left join photos to get lat/lng
+      // Filter to only show objects that have been synced (date_synced matches source)
       let query = db
         .selectFrom("objects as o")
         .innerJoin("sources as s", "o.source_id", "s.id")
@@ -43,6 +44,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
         .selectAll("s")
         .select(["p.lat", "p.lng"])
         .select("o.id as object_id") // id is for sources since it's second
+        .whereRef("o.date_synced", "=", "s.date_synced")
         .orderBy("o.date_created", "desc")
         .limit(limit + 1);
 
@@ -56,7 +58,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
               eb("o.date_created", "=", cursor.dateCreated),
               eb("o.id", "<", cursor.id),
             ]),
-          ])
+          ]),
         );
       }
 
@@ -130,7 +132,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
         return "S3Source" as const;
       }
       throw new GraphQLError(
-        `Can not determing type name of source with kind ${parent.kind}`
+        `Can not determing type name of source with kind ${parent.kind}`,
       );
     },
   },
@@ -173,7 +175,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
               s3ApiKey: row.s3_api_key,
               s3ApiKeySecret: row.s3_api_key_secret,
             },
-            encryptionKey
+            encryptionKey,
           );
 
           return {
@@ -186,7 +188,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
             },
             cursor: new DbCursor(row.object_id, row.date_created).encode(),
           } satisfies PhotoEdge;
-        })
+        }),
       );
     },
     pageInfo: (p) => {
@@ -204,7 +206,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
 export function createGraphQLHandler(
   db: Kysely<DB>,
   encryptionKey: string,
-  graphqlEndpoint: string
+  graphqlEndpoint: string,
 ) {
   return createYoga<GraphQLContext>({
     schema: createSchema({ typeDefs, resolvers }),

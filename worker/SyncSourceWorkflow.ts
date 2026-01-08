@@ -80,11 +80,11 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
                 source_id: eb.ref("excluded.source_id"),
                 date_synced: eb.ref("excluded.date_synced"),
                 date_created: eb.ref("excluded.date_created"),
-              }))
+              })),
             )
             .execute();
           return { continuationToken: nextContinuationToken };
-        }
+        },
       );
       stepIndex += 1;
       continuationToken = result.continuationToken;
@@ -101,7 +101,169 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
       });
       return; // the subsequent workflow will finish the job
     }
-    // we're done! now we just need to handle the stale objects...
+
+    // Handle stale objects (not found in current sync)
+    await step.do("handle stale objects", async () => {
+      const syncTimestamp = syncDate.getTime() / 1000;
+
+      // Clear existing pending rename candidates for this source - we'll rebuild from current state
+      await db
+        .deleteFrom("pending_rename_candidates")
+        .where("source_id", "=", sourceId)
+        .execute();
+
+      // QUERY 1: Get stale objects with their candidate counts (single query)
+      // This joins stale objects with new objects by hash to find candidates
+      const staleWithCandidates = await db
+        .selectFrom("objects as stale")
+        .leftJoin("objects as candidate", (join) =>
+          join
+            .onRef("stale.hash", "=", "candidate.hash")
+            .on("candidate.source_id", "=", sourceId)
+            .on("candidate.date_synced", "=", syncTimestamp),
+        )
+        .select([
+          "stale.id as stale_id",
+          "stale.hash as stale_hash",
+          "candidate.id as candidate_id",
+          "candidate.key as candidate_key",
+          "candidate.date_created as candidate_date_created",
+          "candidate.hash as candidate_hash",
+        ])
+        .where("stale.source_id", "=", sourceId)
+        .where("stale.date_synced", "!=", syncTimestamp)
+        .execute();
+
+      // Group by stale object
+      type Candidate = {
+        id: number;
+        key: string;
+        dateCreated: number;
+        hash: string;
+      };
+      const staleMap = new Map<
+        number,
+        { hash: string | null; candidates: Candidate[] }
+      >();
+      for (const row of staleWithCandidates) {
+        if (!staleMap.has(row.stale_id)) {
+          staleMap.set(row.stale_id, { hash: row.stale_hash, candidates: [] });
+        }
+        if (row.candidate_id != null) {
+          staleMap.get(row.stale_id)!.candidates.push({
+            id: row.candidate_id,
+            key: row.candidate_key!,
+            dateCreated: row.candidate_date_created!,
+            hash: row.candidate_hash!,
+          });
+        }
+      }
+
+      // Categorize
+      const toDelete: number[] = [];
+      const toRename: {
+        staleId: number;
+        candidateId: number;
+        newKey: string;
+        newDateCreated: number;
+        newHash: string;
+      }[] = [];
+      const toPending: { staleId: number; candidateIds: number[] }[] = [];
+
+      for (const [staleId, { hash, candidates }] of staleMap) {
+        if (!hash || candidates.length === 0) {
+          toDelete.push(staleId);
+        } else if (candidates.length === 1) {
+          const c = candidates[0];
+          toRename.push({
+            staleId,
+            candidateId: c.id,
+            newKey: c.key,
+            newDateCreated: c.dateCreated,
+            newHash: c.hash,
+          });
+        } else {
+          toPending.push({
+            staleId,
+            candidateIds: candidates.map((c) => c.id),
+          });
+        }
+      }
+
+      // QUERY 2: Bulk delete objects with no candidates
+      if (toDelete.length > 0) {
+        await db.deleteFrom("objects").where("id", "in", toDelete).execute();
+      }
+
+      // QUERY 3: Handle renames (update stale objects with new keys, delete candidates)
+      if (toRename.length > 0) {
+        // Delete the candidate objects first
+        await db
+          .deleteFrom("objects")
+          .where(
+            "id",
+            "in",
+            toRename.map((r) => r.candidateId),
+          )
+          .execute();
+
+        // Bulk upsert stale objects with new keys using INSERT ON CONFLICT
+        await db
+          .insertInto("objects")
+          .values(
+            toRename.map((r) => ({
+              id: r.staleId,
+              key: r.newKey,
+              source_id: sourceId,
+              date_synced: syncTimestamp,
+              date_created: r.newDateCreated,
+              hash: r.newHash,
+            })),
+          )
+          .onConflict((oc) =>
+            oc.column("id").doUpdateSet((eb) => ({
+              key: eb.ref("excluded.key"),
+              date_synced: eb.ref("excluded.date_synced"),
+              date_created: eb.ref("excluded.date_created"),
+              hash: eb.ref("excluded.hash"),
+            })),
+          )
+          .execute();
+      }
+
+      // QUERY 4: Insert pending rename candidates
+      if (toPending.length > 0) {
+        const candidateRows: {
+          object_id: number;
+          candidate_id: number;
+          source_id: number;
+          created_at: number;
+        }[] = [];
+        for (const p of toPending) {
+          for (const candidateId of p.candidateIds) {
+            candidateRows.push({
+              object_id: p.staleId,
+              candidate_id: candidateId,
+              source_id: sourceId,
+              created_at: syncTimestamp,
+            });
+          }
+        }
+        await db
+          .insertInto("pending_rename_candidates")
+          .values(candidateRows)
+          .execute();
+      }
+    });
+
+    // Update source's date_synced
+    await step.do("update source date_synced", async () => {
+      await db
+        .updateTable("sources")
+        .set({ date_synced: syncDate.getTime() / 1000 })
+        .where("id", "=", sourceId)
+        .execute();
+    });
   }
 }
 
@@ -113,7 +275,7 @@ async function listObjects(
     s3_endpoint: string;
     s3_bucket: string;
   },
-  continuationToken: string | undefined
+  continuationToken: string | undefined,
 ) {
   const aws = new AwsClient({
     accessKeyId: source.s3_api_key,
@@ -138,11 +300,11 @@ async function listObjects(
     if (text) {
       const { Code, Message, ...rest } = parseErrorResponse(text);
       throw new Error(
-        `${url.toString()} failed with status ${response.status} - (Code ${Code}): ${Message}\n${JSON.stringify(rest, null, 2)}`
+        `${url.toString()} failed with status ${response.status} - (Code ${Code}): ${Message}\n${JSON.stringify(rest, null, 2)}`,
       );
     }
     throw new Error(
-      `${url.toString()} failed with status ${response.status} - no body`
+      `${url.toString()} failed with status ${response.status} - no body`,
     );
   }
   if (!text) {
