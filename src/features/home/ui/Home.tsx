@@ -1,3 +1,7 @@
+import { ErrorBoundary } from "@/shared/ErrorBoundary";
+import { Suspense } from "react";
+import { PhotosList } from "./PhotosList";
+
 export function Home() {
   return (
     <>
@@ -5,10 +9,11 @@ export function Home() {
         <h1>Pickle Jar</h1>
         <p>Photos and more! (eventually)</p>
       </hgroup>
-      <img
-        src="/src/assets/pickle-dancing-on-a-jar.jpg"
-        alt="pickle dancing on a jar"
-      />
+      <ErrorBoundary>
+        <Suspense fallback={<div aria-busy="true">Loading...</div>}>
+          <PhotosList />
+        </Suspense>
+      </ErrorBoundary>
     </>
   );
 }

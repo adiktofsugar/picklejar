@@ -24,83 +24,136 @@ type Params = {
 export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
   async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
     const sourceId = event.payload.sourceId;
-    let continuationToken: undefined | string = event.payload.continuationToken;
+    const initialContinuationToken: undefined | string =
+      event.payload.continuationToken;
     const syncDate = event.payload.syncDate || event.timestamp;
+
+    console.log("[SyncSourceWorkflow] Starting workflow", {
+      sourceId,
+      continuationToken: initialContinuationToken,
+      syncDate: syncDate.toISOString(),
+    });
 
     const db = createDb(this.env.db);
     const source = await step.do("get source from db", async () => {
-      return db
+      console.log("[SyncSourceWorkflow] Fetching source from DB", { sourceId });
+      const result = await db
         .selectFrom("sources")
         .selectAll()
         .where("id", "=", sourceId)
         .executeTakeFirstOrThrow();
+      console.log("[SyncSourceWorkflow] Found source", {
+        name: result.name,
+        bucket: result.s3_bucket,
+        endpoint: result.s3_endpoint,
+      });
+      return result;
     });
 
     // 50 subrequests limit applies to d1 requests
-    // - 1 for source
-    // - 1 per batch / step
+    // There's a very low limit on SQL variables (~100), so we use D1's batch API
+    // to run individual INSERT statements in a single subrequest
+    const MAX_OBJECTS = 1000;
 
-    // there are actually 1024 max steps (https://developers.cloudflare.com/workflows/reference/limits/)
-    //   but since each step makes 1 subrequest (db call), we can't do more than 49 steps
-    //   ...but there's also the stale object handling at the end...
-    const MAX_STEPS = 35;
-    let stepIndex = 0;
+    const result = await step.do("list and insert objects", async () => {
+      let continuationToken = initialContinuationToken;
+      console.log("[SyncSourceWorkflow] Listing objects", {
+        continuationToken,
+      });
+      let objectsProcessed = 0;
+      let page = 0;
+      const MAX_PAGES = 10;
+      do {
+        const data = await listObjects(source, continuationToken, MAX_OBJECTS);
+        console.log("[SyncSourceWorkflow] Listed objects", {
+          count: data.Contents.length,
+          hasMore: !!data.NextContinuationToken,
+        });
 
-    do {
-      const result = await step.do(
-        `process objects - ${stepIndex}`,
-        async () => {
-          const values: Insertable<ObjectRow>[] = [];
-          let nextContinuationToken: undefined | string = undefined;
-          const MAX_PAGES = 10;
-          for (let page = 0; page < MAX_PAGES; page += 1) {
-            const data = await listObjects(source, continuationToken);
-            nextContinuationToken = data.NextContinuationToken;
-            for (const { Key, ETag, LastModified } of data.Contents) {
-              // TODO: we're missing a way to be able to reset
-              values.push({
-                key: Key,
-                hash: ETag,
-                source_id: sourceId,
-                date_synced: syncDate.getTime() / 1000,
-                date_created: parseS3Date(LastModified).getTime() / 1000,
-              });
+        const values: Insertable<ObjectRow>[] = [];
+        for (const { Key, ETag, LastModified } of data.Contents) {
+          objectsProcessed += 1;
+          // TODO: we're missing a way to be able to reset
+          values.push({
+            key: Key,
+            hash: ETag,
+            source_id: sourceId,
+            date_synced: syncDate.getTime() / 1000,
+            date_created: parseS3Date(LastModified).getTime() / 1000,
+          });
+        }
+
+        if (values.length > 0) {
+          console.log("[SyncSourceWorkflow] Inserting objects via batch", {
+            count: values.length,
+          });
+
+          // Use D1 batch API to avoid the low variable limit
+          // Each statement is an individual INSERT with ON CONFLICT
+          // if we're trying to insert an object that already has this key,
+          //  change the insert to update with these keys
+          // this would happen on any existing object, so it's unclear if this
+          //   is just updating the date_synced or if it's updating the hash
+          const statements = values.map((v) =>
+            this.env.db
+              .prepare(
+                `INSERT INTO objects (key, hash, source_id, date_synced, date_created)
+                 VALUES (?, ?, ?, ?, ?)
+                 ON CONFLICT (key) DO UPDATE SET
+                   hash = excluded.hash,
+                   source_id = excluded.source_id,
+                   date_synced = excluded.date_synced,
+                   date_created = excluded.date_created`
+              )
+              .bind(v.key, v.hash, v.source_id, v.date_synced, v.date_created)
+          );
+
+          try {
+            await this.env.db.batch(statements);
+            console.log("[SyncSourceWorkflow] Batch insert complete");
+          } catch (e) {
+            console.error(
+              `[SyncSourceWorkflow] Failed to insert objects: ${e}`
+            );
+            if (e instanceof Error && e.stack) {
+              console.error(e.stack);
             }
+            throw e;
           }
-          await db
-            .insertInto("objects")
-            .values(values)
-            .onConflict((oc) =>
-              // if we're trying to insert an object that already has this key,
-              //  change the insert to update with these keys
-              // this would happen on any existing object, so it's unclear if this
-              //   is just updating the date_synced or if it's updating the hash
-              oc.column("key").doUpdateSet((eb) => ({
-                hash: eb.ref("excluded.hash"),
-                source_id: eb.ref("excluded.source_id"),
-                date_synced: eb.ref("excluded.date_synced"),
-                date_created: eb.ref("excluded.date_created"),
-              })),
-            )
-            .execute();
-          return { continuationToken: nextContinuationToken };
-        },
-      );
-      stepIndex += 1;
-      continuationToken = result.continuationToken;
-    } while (continuationToken && stepIndex < MAX_STEPS);
+        }
+        page += 1;
+        continuationToken = data.NextContinuationToken;
+      } while (page < MAX_PAGES && continuationToken);
 
-    if (continuationToken) {
+      console.log("[SyncSourceWorkflow] Step complete", {
+        objectsProcessed,
+        continuationToken,
+      });
+      return { continuationToken };
+    });
+
+    if (result.continuationToken) {
+      console.log("[SyncSourceWorkflow] Creating continuation workflow", {
+        sourceId,
+        hasContinuationToken: true,
+      });
       const workflow: Workflow<Params> = this.env.SyncSourceWorkflow;
       await workflow.create({
         params: {
-          continuationToken,
+          continuationToken: result.continuationToken,
           sourceId,
           syncDate,
         },
       });
+      console.log(
+        "[SyncSourceWorkflow] Continuation workflow created, exiting"
+      );
       return; // the subsequent workflow will finish the job
     }
+
+    console.log(
+      "[SyncSourceWorkflow] All objects processed, handling stale objects"
+    );
 
     // Handle stale objects (not found in current sync)
     await step.do("handle stale objects", async () => {
@@ -120,7 +173,7 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
           join
             .onRef("stale.hash", "=", "candidate.hash")
             .on("candidate.source_id", "=", sourceId)
-            .on("candidate.date_synced", "=", syncTimestamp),
+            .on("candidate.date_synced", "=", syncTimestamp)
         )
         .select([
           "stale.id as stale_id",
@@ -203,7 +256,7 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
           .where(
             "id",
             "in",
-            toRename.map((r) => r.candidateId),
+            toRename.map((r) => r.candidateId)
           )
           .execute();
 
@@ -218,7 +271,7 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
               date_synced: syncTimestamp,
               date_created: r.newDateCreated,
               hash: r.newHash,
-            })),
+            }))
           )
           .onConflict((oc) =>
             oc.column("id").doUpdateSet((eb) => ({
@@ -226,7 +279,7 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
               date_synced: eb.ref("excluded.date_synced"),
               date_created: eb.ref("excluded.date_created"),
               hash: eb.ref("excluded.hash"),
-            })),
+            }))
           )
           .execute();
       }
@@ -258,11 +311,16 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
 
     // Update source's date_synced
     await step.do("update source date_synced", async () => {
+      console.log("[SyncSourceWorkflow] Updating source date_synced", {
+        sourceId,
+        syncDate: syncDate.toISOString(),
+      });
       await db
         .updateTable("sources")
         .set({ date_synced: syncDate.getTime() / 1000 })
         .where("id", "=", sourceId)
         .execute();
+      console.log("[SyncSourceWorkflow] Workflow complete!");
     });
   }
 }
@@ -276,39 +334,73 @@ async function listObjects(
     s3_bucket: string;
   },
   continuationToken: string | undefined,
+  maxKeys: number
 ) {
-  const aws = new AwsClient({
-    accessKeyId: source.s3_api_key,
-    secretAccessKey: source.s3_api_key_secret,
-    region: source.s3_region,
-    service: "s3",
+  console.log("[listObjects] Starting S3 request", {
+    endpoint: source.s3_endpoint,
+    bucket: source.s3_bucket,
+    hasContinuationToken: !!continuationToken,
+    maxKeys,
   });
-  // GET /?list-type=2&continuation-token=ContinuationToken&delimiter=Delimiter&encoding-type=EncodingType&fetch-owner=FetchOwner&max-keys=MaxKeys&prefix=Prefix&start-after=StartAfter HTTP/1.1
-  const url = new URL(`https://${source.s3_endpoint}/${source.s3_bucket}/`);
-  url.searchParams.set("list-type", "2");
-  if (continuationToken) {
-    url.searchParams.set("continuation-token", continuationToken);
-  }
-  const response = await aws.fetch(url);
-  let text = "";
-  if (response.body) {
-    for await (const chunk of streamToAsyncIterator(response.body)) {
-      text += chunk;
+
+  try {
+    const aws = new AwsClient({
+      accessKeyId: source.s3_api_key,
+      secretAccessKey: source.s3_api_key_secret,
+      region: source.s3_region,
+      service: "s3",
+    });
+    // GET /?list-type=2&continuation-token=ContinuationToken&delimiter=Delimiter&encoding-type=EncodingType&fetch-owner=FetchOwner&max-keys=MaxKeys&prefix=Prefix&start-after=StartAfter HTTP/1.1
+    const url = new URL(`https://${source.s3_endpoint}/${source.s3_bucket}/`);
+    url.searchParams.set("list-type", "2");
+    url.searchParams.set("max-keys", String(maxKeys));
+    if (continuationToken) {
+      url.searchParams.set("continuation-token", continuationToken);
     }
-  }
-  if (!response.ok) {
-    if (text) {
-      const { Code, Message, ...rest } = parseErrorResponse(text);
+
+    console.log("[listObjects] Fetching", { url: url.toString() });
+    const response = await aws.fetch(url);
+    console.log("[listObjects] Response received", {
+      status: response.status,
+      ok: response.ok,
+    });
+
+    const decoder = new TextDecoder();
+    let text = "";
+    if (response.body) {
+      for await (const chunk of streamToAsyncIterator(response.body)) {
+        text += decoder.decode(chunk, { stream: true });
+      }
+      text += decoder.decode(); // flush remaining
+    }
+    console.log(`[listObjects] body read: ${text.length} chars`);
+    if (!response.ok) {
+      console.error("[listObjects] S3 request failed", {
+        status: response.status,
+        body: text,
+      });
+      if (text) {
+        const { Code, Message, ...rest } = parseErrorResponse(text);
+        throw new Error(
+          `${url.toString()} failed with status ${response.status} - (Code ${Code}): ${Message}\n${JSON.stringify(rest, null, 2)}`
+        );
+      }
       throw new Error(
-        `${url.toString()} failed with status ${response.status} - (Code ${Code}): ${Message}\n${JSON.stringify(rest, null, 2)}`,
+        `${url.toString()} failed with status ${response.status} - no body`
       );
     }
-    throw new Error(
-      `${url.toString()} failed with status ${response.status} - no body`,
-    );
+    if (!text) {
+      throw new Error(`${url.toString()} failed by not having any text?`);
+    }
+    console.log(`[listObjects] parsing response (${text.length} chars)`);
+    const result = parseListObjectsV2Response(text);
+    console.log("[listObjects] parsed successfully", {
+      objectCount: result.Contents.length,
+      hasMore: !!result.NextContinuationToken,
+    });
+    return result;
+  } catch (error) {
+    console.error("[listObjects] ERROR:", error);
+    throw error;
   }
-  if (!text) {
-    throw new Error(`${url.toString()} failed by not having any text?`);
-  }
-  return parseListObjectsV2Response(text);
 }

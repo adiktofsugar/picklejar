@@ -32,6 +32,7 @@ export type Mutation = {
   __typename?: 'Mutation';
   createS3Source: S3Source;
   deleteS3Source: S3Source;
+  syncSource: Scalars['String']['output'];
   updateS3Source: S3Source;
 };
 
@@ -43,6 +44,11 @@ export type MutationCreateS3SourceArgs = {
 
 export type MutationDeleteS3SourceArgs = {
   input: DeleteS3SourceInput;
+};
+
+
+export type MutationSyncSourceArgs = {
+  input: SyncSourceInput;
 };
 
 
@@ -82,6 +88,7 @@ export type Query = {
   photos: PhotoConnection;
   source: Source;
   sources: Array<Source>;
+  syncStatus: Maybe<SyncStatus>;
 };
 
 
@@ -95,6 +102,11 @@ export type QuerySourceArgs = {
   id: Scalars['ID']['input'];
 };
 
+
+export type QuerySyncStatusArgs = {
+  workflowId: Scalars['ID']['input'];
+};
+
 export type S3Source = Source & {
   __typename?: 'S3Source';
   id: Scalars['ID']['output'];
@@ -104,12 +116,35 @@ export type S3Source = Source & {
   s3_bucket: Scalars['String']['output'];
   s3_endpoint: Scalars['String']['output'];
   s3_region: Scalars['String']['output'];
+  sync_workflow_id: Maybe<Scalars['String']['output']>;
 };
 
 export type Source = {
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
+  sync_workflow_id: Maybe<Scalars['String']['output']>;
 };
+
+export type SyncSourceInput = {
+  id: Scalars['ID']['input'];
+};
+
+export type SyncStatus = {
+  __typename?: 'SyncStatus';
+  error: Maybe<Scalars['String']['output']>;
+  status: SyncStatusState;
+};
+
+export type SyncStatusState =
+  | 'complete'
+  | 'errored'
+  | 'paused'
+  | 'queued'
+  | 'running'
+  | 'terminated'
+  | 'unknown'
+  | 'waiting'
+  | 'waitingForPause';
 
 export type UpdateS3SourceInput = {
   id: Scalars['ID']['input'];
@@ -147,12 +182,26 @@ export type GetSourceQueryVariables = Exact<{
 }>;
 
 
-export type GetSourceQuery = { __typename?: 'Query', source: { __typename?: 'S3Source', s3_endpoint: string, s3_region: string, s3_bucket: string, id: string, name: string } };
+export type GetSourceQuery = { __typename?: 'Query', source: { __typename?: 'S3Source', s3_endpoint: string, s3_region: string, s3_bucket: string, id: string, name: string, sync_workflow_id: string | null } };
 
 export type GetSourcesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
 export type GetSourcesQuery = { __typename?: 'Query', sources: Array<{ __typename?: 'S3Source', s3_endpoint: string, s3_region: string, s3_bucket: string, id: string, name: string }> };
+
+export type GetSyncStatusQueryVariables = Exact<{
+  workflowId: Scalars['ID']['input'];
+}>;
+
+
+export type GetSyncStatusQuery = { __typename?: 'Query', syncStatus: { __typename?: 'SyncStatus', status: SyncStatusState, error: string | null } | null };
+
+export type SyncSourceMutationVariables = Exact<{
+  input: SyncSourceInput;
+}>;
+
+
+export type SyncSourceMutation = { __typename?: 'Mutation', syncSource: string };
 
 export type UpdateSourceMutationVariables = Exact<{
   input: UpdateS3SourceInput;
@@ -172,7 +221,9 @@ export type GetSourcesIdDataQuery = { __typename?: 'Query', source: { __typename
 export const GetPhotosDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetPhotos"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"photos"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"first"},"value":{"kind":"IntValue","value":"100"}},{"kind":"Argument","name":{"kind":"Name","value":"cursor"},"value":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"token"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"pageInfo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"hasNextPage"}},{"kind":"Field","name":{"kind":"Name","value":"endCursor"}}]}}]}}]}}]} as unknown as DocumentNode<GetPhotosQuery, GetPhotosQueryVariables>;
 export const CreateSourceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateSource"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateS3SourceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createS3Source"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<CreateSourceMutation, CreateSourceMutationVariables>;
 export const DeleteSourceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteSource"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DeleteS3SourceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteS3Source"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<DeleteSourceMutation, DeleteSourceMutationVariables>;
-export const GetSourceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSource"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"source"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"S3Source"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"s3_endpoint"}},{"kind":"Field","name":{"kind":"Name","value":"s3_region"}},{"kind":"Field","name":{"kind":"Name","value":"s3_bucket"}}]}}]}}]}}]} as unknown as DocumentNode<GetSourceQuery, GetSourceQueryVariables>;
+export const GetSourceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSource"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"source"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"sync_workflow_id"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"S3Source"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"s3_endpoint"}},{"kind":"Field","name":{"kind":"Name","value":"s3_region"}},{"kind":"Field","name":{"kind":"Name","value":"s3_bucket"}}]}}]}}]}}]} as unknown as DocumentNode<GetSourceQuery, GetSourceQueryVariables>;
 export const GetSourcesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSources"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"sources"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"S3Source"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"s3_endpoint"}},{"kind":"Field","name":{"kind":"Name","value":"s3_region"}},{"kind":"Field","name":{"kind":"Name","value":"s3_bucket"}}]}}]}}]}}]} as unknown as DocumentNode<GetSourcesQuery, GetSourcesQueryVariables>;
+export const GetSyncStatusDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSyncStatus"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workflowId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"syncStatus"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workflowId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workflowId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"error"}}]}}]}}]} as unknown as DocumentNode<GetSyncStatusQuery, GetSyncStatusQueryVariables>;
+export const SyncSourceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SyncSource"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"SyncSourceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"syncSource"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}]}]}}]} as unknown as DocumentNode<SyncSourceMutation, SyncSourceMutationVariables>;
 export const UpdateSourceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateSource"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateS3SourceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateS3Source"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]} as unknown as DocumentNode<UpdateSourceMutation, UpdateSourceMutationVariables>;
 export const GetSourcesIdDataDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSourcesIdData"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"source"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<GetSourcesIdDataQuery, GetSourcesIdDataQueryVariables>;

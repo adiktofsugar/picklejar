@@ -1,0 +1,3 @@
+mutation SyncSource($input: SyncSourceInput!) {
+  syncSource(input: $input)
+}

@@ -1,0 +1,6 @@
+query GetSyncStatus($workflowId: ID!) {
+  syncStatus(workflowId: $workflowId) {
+    status
+    error
+  }
+}

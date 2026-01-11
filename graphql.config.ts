@@ -15,6 +15,8 @@ const codegen: CodegenConfig = {
         //   will end up being a number instead of a string, so I need to add the resolver
         //   ...but I won't get an error for not having the mapped resolver if its optional
         avoidOptionals: true,
+        // Use string literal unions instead of enums
+        enumsAsTypes: true,
         // this replaces the types the resolvers are expected to return, so that a resolver
         //   can return the actual db query instead of a fully resolved object, which allows
         //   the resolver nesting to work as expected
@@ -34,6 +36,8 @@ const codegen: CodegenConfig = {
       plugins: ["typescript", "typescript-operations", "typed-document-node"],
       config: {
         avoidOptionals: true,
+        // Use string literal unions instead of enums
+        enumsAsTypes: true,
       } satisfies TypeScriptDocumentsPluginConfig,
     },
   },

@@ -34,6 +34,7 @@ export type Mutation = {
   __typename?: 'Mutation';
   createS3Source: S3Source;
   deleteS3Source: S3Source;
+  syncSource: Scalars['String']['output'];
   updateS3Source: S3Source;
 };
 
@@ -45,6 +46,11 @@ export type MutationCreateS3SourceArgs = {
 
 export type MutationDeleteS3SourceArgs = {
   input: DeleteS3SourceInput;
+};
+
+
+export type MutationSyncSourceArgs = {
+  input: SyncSourceInput;
 };
 
 
@@ -84,6 +90,7 @@ export type Query = {
   photos: PhotoConnection;
   source: Source;
   sources: Array<Source>;
+  syncStatus: Maybe<SyncStatus>;
 };
 
 
@@ -97,6 +104,11 @@ export type QuerySourceArgs = {
   id: Scalars['ID']['input'];
 };
 
+
+export type QuerySyncStatusArgs = {
+  workflowId: Scalars['ID']['input'];
+};
+
 export type S3Source = Source & {
   __typename?: 'S3Source';
   id: Scalars['ID']['output'];
@@ -106,12 +118,35 @@ export type S3Source = Source & {
   s3_bucket: Scalars['String']['output'];
   s3_endpoint: Scalars['String']['output'];
   s3_region: Scalars['String']['output'];
+  sync_workflow_id: Maybe<Scalars['String']['output']>;
 };
 
 export type Source = {
   id: Scalars['ID']['output'];
   name: Scalars['String']['output'];
+  sync_workflow_id: Maybe<Scalars['String']['output']>;
 };
+
+export type SyncSourceInput = {
+  id: Scalars['ID']['input'];
+};
+
+export type SyncStatus = {
+  __typename?: 'SyncStatus';
+  error: Maybe<Scalars['String']['output']>;
+  status: SyncStatusState;
+};
+
+export type SyncStatusState =
+  | 'complete'
+  | 'errored'
+  | 'paused'
+  | 'queued'
+  | 'running'
+  | 'terminated'
+  | 'unknown'
+  | 'waiting'
+  | 'waitingForPause';
 
 export type UpdateS3SourceInput = {
   id: Scalars['ID']['input'];
@@ -216,6 +251,9 @@ export type ResolversTypes = ResolversObject<{
   S3Source: ResolverTypeWrapper<SelectableS3SourceRow>;
   Source: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Source']>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
+  SyncSourceInput: SyncSourceInput;
+  SyncStatus: ResolverTypeWrapper<SyncStatus>;
+  SyncStatusState: SyncStatusState;
   UpdateS3SourceInput: UpdateS3SourceInput;
 }>;
 
@@ -236,12 +274,15 @@ export type ResolversParentTypes = ResolversObject<{
   S3Source: SelectableS3SourceRow;
   Source: ResolversInterfaceTypes<ResolversParentTypes>['Source'];
   String: Scalars['String']['output'];
+  SyncSourceInput: SyncSourceInput;
+  SyncStatus: SyncStatus;
   UpdateS3SourceInput: UpdateS3SourceInput;
 }>;
 
 export type MutationResolvers<ContextType = any, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = ResolversObject<{
   createS3Source: Resolver<ResolversTypes['S3Source'], ParentType, ContextType, RequireFields<MutationCreateS3SourceArgs, 'input'>>;
   deleteS3Source: Resolver<ResolversTypes['S3Source'], ParentType, ContextType, RequireFields<MutationDeleteS3SourceArgs, 'input'>>;
+  syncSource: Resolver<ResolversTypes['String'], ParentType, ContextType, RequireFields<MutationSyncSourceArgs, 'input'>>;
   updateS3Source: Resolver<ResolversTypes['S3Source'], ParentType, ContextType, RequireFields<MutationUpdateS3SourceArgs, 'input'>>;
 }>;
 
@@ -272,6 +313,7 @@ export type QueryResolvers<ContextType = any, ParentType extends ResolversParent
   photos: Resolver<ResolversTypes['PhotoConnection'], ParentType, ContextType, QueryPhotosArgs>;
   source: Resolver<ResolversTypes['Source'], ParentType, ContextType, RequireFields<QuerySourceArgs, 'id'>>;
   sources: Resolver<Array<ResolversTypes['Source']>, ParentType, ContextType>;
+  syncStatus: Resolver<Maybe<ResolversTypes['SyncStatus']>, ParentType, ContextType, RequireFields<QuerySyncStatusArgs, 'workflowId'>>;
 }>;
 
 export type S3SourceResolvers<ContextType = any, ParentType extends ResolversParentTypes['S3Source'] = ResolversParentTypes['S3Source']> = ResolversObject<{
@@ -282,11 +324,17 @@ export type S3SourceResolvers<ContextType = any, ParentType extends ResolversPar
   s3_bucket: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   s3_endpoint: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   s3_region: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  sync_workflow_id: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
 export type SourceResolvers<ContextType = any, ParentType extends ResolversParentTypes['Source'] = ResolversParentTypes['Source']> = ResolversObject<{
   __resolveType: TypeResolveFn<'S3Source', ParentType, ContextType>;
+}>;
+
+export type SyncStatusResolvers<ContextType = any, ParentType extends ResolversParentTypes['SyncStatus'] = ResolversParentTypes['SyncStatus']> = ResolversObject<{
+  error: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  status: Resolver<ResolversTypes['SyncStatusState'], ParentType, ContextType>;
 }>;
 
 export type Resolvers<ContextType = any> = ResolversObject<{
@@ -298,5 +346,6 @@ export type Resolvers<ContextType = any> = ResolversObject<{
   Query: QueryResolvers<ContextType>;
   S3Source: S3SourceResolvers<ContextType>;
   Source: SourceResolvers<ContextType>;
+  SyncStatus: SyncStatusResolvers<ContextType>;
 }>;
 

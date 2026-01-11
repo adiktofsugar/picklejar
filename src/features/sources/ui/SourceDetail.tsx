@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from "@apollo/client/react";
 import { GetSourceDocument } from "../../../generated/graphql-operations";
 import { SourceDeleteButton } from "./SourceDeleteButton";
+import { SourceSyncButton } from "./SourceSyncButton";
 import { useNavigate } from "@tanstack/react-router";
 import { ErrorBoundary } from "@/shared/ErrorBoundary";
 
@@ -29,6 +30,12 @@ export function SourceDetail({ id }: { id: string }) {
           </tr>
         </tbody>
       </table>
+      <ErrorBoundary>
+        <SourceSyncButton
+          id={id}
+          initialWorkflowId={source.sync_workflow_id ?? null}
+        />
+      </ErrorBoundary>
       <ErrorBoundary>
         <SourceDeleteButton
           id={id}

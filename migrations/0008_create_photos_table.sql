@@ -1,5 +1,5 @@
 -- Migration number: 0008 	 2026-01-06
--- Create photos table with lat/lng and remove those columns from objects
+-- Create photos table with lat/lng
 
 CREATE TABLE photos (
     id INTEGER PRIMARY KEY,
@@ -10,6 +10,3 @@ CREATE TABLE photos (
 );
 
 CREATE INDEX idx_photos_object_hash ON photos(object_hash);
-
-ALTER TABLE objects DROP COLUMN lat;
-ALTER TABLE objects DROP COLUMN lng;

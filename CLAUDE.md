@@ -15,3 +15,4 @@ React + Vite frontend with Cloudflare Worker backend. Uses GraphQL with codegen.
 - `npm run lint`: lint code - run after changes
 - `npm run fix`: auto-fix code - mostly for formatting
 - `npm run types`: create generated assets, like GraphQL code, route tree, and db types
+- `npm run db:prepare`: run database migrations (local only)

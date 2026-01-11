@@ -2,6 +2,7 @@ query GetSource($id: ID!) {
   source(id: $id) {
     id
     name
+    sync_workflow_id
     ... on S3Source {
       s3_endpoint
       s3_region

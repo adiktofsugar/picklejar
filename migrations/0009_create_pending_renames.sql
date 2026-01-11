@@ -1,4 +1,4 @@
-CREATE TABLE pending_rename_candidates (
+CREATE TABLE IF NOT EXISTS pending_rename_candidates (
   object_id INTEGER NOT NULL,
   candidate_id INTEGER NOT NULL,
   source_id INTEGER NOT NULL,
@@ -9,5 +9,5 @@ CREATE TABLE pending_rename_candidates (
   FOREIGN KEY (source_id) REFERENCES sources(id)
 );
 
-CREATE INDEX pending_rename_candidates_candidate_id ON pending_rename_candidates(candidate_id);
-CREATE INDEX pending_rename_candidates_source_id ON pending_rename_candidates(source_id);
+CREATE INDEX IF NOT EXISTS pending_rename_candidates_candidate_id ON pending_rename_candidates(candidate_id);
+CREATE INDEX IF NOT EXISTS pending_rename_candidates_source_id ON pending_rename_candidates(source_id);

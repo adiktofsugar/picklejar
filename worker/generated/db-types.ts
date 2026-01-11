@@ -29,7 +29,7 @@ export interface Photos {
   id: Generated<number | null>;
   lat: number | null;
   lng: number | null;
-  object_hash: string;
+  object_id: number;
 }
 
 export interface Sources {
@@ -42,6 +42,7 @@ export interface Sources {
   s3_bucket: string | null;
   s3_endpoint: string | null;
   s3_region: string | null;
+  sync_workflow_id: string | null;
 }
 
 export interface DB {

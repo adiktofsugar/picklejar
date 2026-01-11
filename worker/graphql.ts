@@ -7,9 +7,16 @@ import { DbCursor } from "./DbCursor";
 import { encryptPhotoToken } from "./crypto";
 import { DB } from "./db-types";
 
+type SyncSourceParams = {
+  sourceId: number;
+  continuationToken: string | undefined;
+  syncDate: Date | undefined;
+};
+
 export interface GraphQLContext {
   db: Kysely<DB>;
   encryptionKey: string;
+  syncSourceWorkflow: Workflow<SyncSourceParams>;
 }
 
 export const resolvers: Resolvers<GraphQLContext> = {
@@ -39,7 +46,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
       let query = db
         .selectFrom("objects as o")
         .innerJoin("sources as s", "o.source_id", "s.id")
-        .leftJoin("photos as p", "o.hash", "p.object_hash")
+        .leftJoin("photos as p", "o.id", "p.object_id")
         .selectAll("o")
         .selectAll("s")
         .select(["p.lat", "p.lng"])
@@ -69,6 +76,22 @@ export const resolvers: Resolvers<GraphQLContext> = {
         results: results.slice(0, limit),
         hasNextPage,
       };
+    },
+    syncStatus: async (_parent, { workflowId }, { syncSourceWorkflow }) => {
+      try {
+        const instance = await syncSourceWorkflow.get(workflowId);
+        const statusResult = await instance.status();
+        return {
+          status: statusResult.status,
+          error: statusResult.error ? JSON.stringify(statusResult.error) : null,
+        };
+      } catch (error) {
+        // If workflow not found or other error, return unknown status
+        return {
+          status: "unknown",
+          error: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
     },
   },
   Mutation: {
@@ -124,6 +147,24 @@ export const resolvers: Resolvers<GraphQLContext> = {
 
       return result;
     },
+    syncSource: async (_parent, { input }, { db, syncSourceWorkflow }) => {
+      const instance = await syncSourceWorkflow.create({
+        params: {
+          sourceId: Number(input.id),
+          continuationToken: undefined,
+          syncDate: undefined,
+        },
+      });
+
+      // Store the workflow ID in the source
+      await db
+        .updateTable("sources")
+        .set({ sync_workflow_id: instance.id })
+        .where("id", "=", Number(input.id))
+        .execute();
+
+      return instance.id;
+    },
   },
   Source: {
     __resolveType: async (parent) => {
@@ -140,6 +181,7 @@ export const resolvers: Resolvers<GraphQLContext> = {
   S3Source: {
     id: (p) => String(p.id),
     name: (p) => p.name,
+    sync_workflow_id: (p) => p.sync_workflow_id,
     s3_endpoint: (p) => p.s3_endpoint,
     s3_region: (p) => p.s3_region,
     s3_bucket: (p) => p.s3_bucket,
@@ -149,6 +191,10 @@ export const resolvers: Resolvers<GraphQLContext> = {
   PageInfo: {
     endCursor: (p) => p.endCursor,
     hasNextPage: (p) => p.hasNextPage,
+  },
+  SyncStatus: {
+    status: (p) => p.status,
+    error: (p) => p.error,
   },
   Photo: {
     id: (p) => p.id,
@@ -206,11 +252,12 @@ export const resolvers: Resolvers<GraphQLContext> = {
 export function createGraphQLHandler(
   db: Kysely<DB>,
   encryptionKey: string,
+  syncSourceWorkflow: Workflow<SyncSourceParams>,
   graphqlEndpoint: string,
 ) {
   return createYoga<GraphQLContext>({
     schema: createSchema({ typeDefs, resolvers }),
-    context: { db, encryptionKey },
+    context: { db, encryptionKey, syncSourceWorkflow },
     graphqlEndpoint,
     fetchAPI: {
       Response,

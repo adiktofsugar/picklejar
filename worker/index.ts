@@ -6,6 +6,8 @@ import { createGraphQLHandler } from "./graphql";
 import { decryptPhotoToken } from "./crypto";
 import { createDb } from "./db";
 
+export { SyncSourceWorkflow } from "./SyncSourceWorkflow";
+
 const graphqlEndpoint = "/api/graphql";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -20,6 +22,7 @@ app.on(["GET", "POST"], graphqlEndpoint, async (c) => {
   const handler = createGraphQLHandler(
     createDb(c.env.db),
     c.env.ENCRYPTION_KEY,
+    c.env.SyncSourceWorkflow,
     graphqlEndpoint,
   );
   return handler.fetch(c.req.raw);
