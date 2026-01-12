@@ -7,6 +7,7 @@ import { decryptPhotoToken } from "./crypto";
 import { createDb } from "./db";
 
 export { SyncSourceWorkflow } from "./SyncSourceWorkflow";
+export { ProcessPhotosWorkflow } from "./ProcessPhotosWorkflow";
 
 const graphqlEndpoint = "/api/graphql";
 

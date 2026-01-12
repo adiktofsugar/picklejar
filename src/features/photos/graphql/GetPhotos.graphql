@@ -4,6 +4,8 @@ query GetPhotos($cursor: String) {
       node {
         id
         token
+        width
+        height
       }
     }
     pageInfo {

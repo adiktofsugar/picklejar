@@ -1,5 +1,5 @@
 import { GraphQLResolveInfo } from 'graphql';
-import { SelectableS3SourceRow, PhotoConnectionRaw } from '../db-types';
+import { SelectableS3SourceRow, PhotoConnectionRaw, PhotoErrorConnectionRaw, PhotoErrorResult } from '../db-types';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
@@ -7,6 +7,7 @@ export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: 
 export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
 export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
+export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
 export type RequireFields<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> };
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
@@ -67,15 +68,18 @@ export type PageInfo = {
 export type Photo = {
   __typename?: 'Photo';
   date_created: Scalars['Int']['output'];
+  height: Scalars['Int']['output'];
   id: Scalars['ID']['output'];
   lat: Maybe<Scalars['Float']['output']>;
   lng: Maybe<Scalars['Float']['output']>;
   token: Scalars['String']['output'];
+  width: Scalars['Int']['output'];
 };
 
 export type PhotoConnection = {
   __typename?: 'PhotoConnection';
   edges: Array<PhotoEdge>;
+  errorCount: Scalars['Int']['output'];
   pageInfo: PageInfo;
 };
 
@@ -85,9 +89,29 @@ export type PhotoEdge = {
   node: Photo;
 };
 
+export type PhotoError = {
+  __typename?: 'PhotoError';
+  error: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  objectKey: Scalars['String']['output'];
+};
+
+export type PhotoErrorConnection = {
+  __typename?: 'PhotoErrorConnection';
+  edges: Array<PhotoErrorEdge>;
+  pageInfo: PageInfo;
+};
+
+export type PhotoErrorEdge = {
+  __typename?: 'PhotoErrorEdge';
+  cursor: Scalars['String']['output'];
+  node: PhotoError;
+};
+
 export type Query = {
   __typename?: 'Query';
   photos: PhotoConnection;
+  photosErrors: PhotoErrorConnection;
   source: Source;
   sources: Array<Source>;
   syncStatus: Maybe<SyncStatus>;
@@ -95,6 +119,12 @@ export type Query = {
 
 
 export type QueryPhotosArgs = {
+  cursor: InputMaybe<Scalars['String']['input']>;
+  first: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryPhotosErrorsArgs = {
   cursor: InputMaybe<Scalars['String']['input']>;
   first: InputMaybe<Scalars['Int']['input']>;
 };
@@ -247,6 +277,9 @@ export type ResolversTypes = ResolversObject<{
   Photo: ResolverTypeWrapper<Photo>;
   PhotoConnection: ResolverTypeWrapper<PhotoConnectionRaw>;
   PhotoEdge: ResolverTypeWrapper<PhotoEdge>;
+  PhotoError: ResolverTypeWrapper<PhotoErrorResult>;
+  PhotoErrorConnection: ResolverTypeWrapper<PhotoErrorConnectionRaw>;
+  PhotoErrorEdge: ResolverTypeWrapper<Omit<PhotoErrorEdge, 'node'> & { node: ResolversTypes['PhotoError'] }>;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   S3Source: ResolverTypeWrapper<SelectableS3SourceRow>;
   Source: ResolverTypeWrapper<ResolversInterfaceTypes<ResolversTypes>['Source']>;
@@ -270,6 +303,9 @@ export type ResolversParentTypes = ResolversObject<{
   Photo: Photo;
   PhotoConnection: PhotoConnectionRaw;
   PhotoEdge: PhotoEdge;
+  PhotoError: PhotoErrorResult;
+  PhotoErrorConnection: PhotoErrorConnectionRaw;
+  PhotoErrorEdge: Omit<PhotoErrorEdge, 'node'> & { node: ResolversParentTypes['PhotoError'] };
   Query: Record<PropertyKey, never>;
   S3Source: SelectableS3SourceRow;
   Source: ResolversInterfaceTypes<ResolversParentTypes>['Source'];
@@ -293,14 +329,17 @@ export type PageInfoResolvers<ContextType = any, ParentType extends ResolversPar
 
 export type PhotoResolvers<ContextType = any, ParentType extends ResolversParentTypes['Photo'] = ResolversParentTypes['Photo']> = ResolversObject<{
   date_created: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  height: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   id: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   lat: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   lng: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   token: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  width: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type PhotoConnectionResolvers<ContextType = any, ParentType extends ResolversParentTypes['PhotoConnection'] = ResolversParentTypes['PhotoConnection']> = ResolversObject<{
   edges: Resolver<Array<ResolversTypes['PhotoEdge']>, ParentType, ContextType>;
+  errorCount: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   pageInfo: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
 }>;
 
@@ -309,8 +348,25 @@ export type PhotoEdgeResolvers<ContextType = any, ParentType extends ResolversPa
   node: Resolver<ResolversTypes['Photo'], ParentType, ContextType>;
 }>;
 
+export type PhotoErrorResolvers<ContextType = any, ParentType extends ResolversParentTypes['PhotoError'] = ResolversParentTypes['PhotoError']> = ResolversObject<{
+  error: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  objectKey: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type PhotoErrorConnectionResolvers<ContextType = any, ParentType extends ResolversParentTypes['PhotoErrorConnection'] = ResolversParentTypes['PhotoErrorConnection']> = ResolversObject<{
+  edges: Resolver<Array<ResolversTypes['PhotoErrorEdge']>, ParentType, ContextType>;
+  pageInfo: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+}>;
+
+export type PhotoErrorEdgeResolvers<ContextType = any, ParentType extends ResolversParentTypes['PhotoErrorEdge'] = ResolversParentTypes['PhotoErrorEdge']> = ResolversObject<{
+  cursor: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  node: Resolver<ResolversTypes['PhotoError'], ParentType, ContextType>;
+}>;
+
 export type QueryResolvers<ContextType = any, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = ResolversObject<{
   photos: Resolver<ResolversTypes['PhotoConnection'], ParentType, ContextType, QueryPhotosArgs>;
+  photosErrors: Resolver<ResolversTypes['PhotoErrorConnection'], ParentType, ContextType, QueryPhotosErrorsArgs>;
   source: Resolver<ResolversTypes['Source'], ParentType, ContextType, RequireFields<QuerySourceArgs, 'id'>>;
   sources: Resolver<Array<ResolversTypes['Source']>, ParentType, ContextType>;
   syncStatus: Resolver<Maybe<ResolversTypes['SyncStatus']>, ParentType, ContextType, RequireFields<QuerySyncStatusArgs, 'workflowId'>>;
@@ -343,6 +399,9 @@ export type Resolvers<ContextType = any> = ResolversObject<{
   Photo: PhotoResolvers<ContextType>;
   PhotoConnection: PhotoConnectionResolvers<ContextType>;
   PhotoEdge: PhotoEdgeResolvers<ContextType>;
+  PhotoError: PhotoErrorResolvers<ContextType>;
+  PhotoErrorConnection: PhotoErrorConnectionResolvers<ContextType>;
+  PhotoErrorEdge: PhotoErrorEdgeResolvers<ContextType>;
   Query: QueryResolvers<ContextType>;
   S3Source: S3SourceResolvers<ContextType>;
   Source: SourceResolvers<ContextType>;

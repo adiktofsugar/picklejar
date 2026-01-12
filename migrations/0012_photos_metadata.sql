@@ -1,0 +1,4 @@
+ALTER TABLE photos ADD COLUMN width INTEGER;
+ALTER TABLE photos ADD COLUMN height INTEGER;
+ALTER TABLE photos ADD COLUMN date_taken INTEGER;
+ALTER TABLE photos ADD COLUMN processing_error TEXT;

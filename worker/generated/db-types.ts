@@ -26,10 +26,14 @@ export interface PendingRenameCandidates {
 }
 
 export interface Photos {
+  date_taken: number | null;
+  height: number | null;
   id: Generated<number | null>;
   lat: number | null;
   lng: number | null;
   object_id: number;
+  processing_error: string | null;
+  width: number | null;
 }
 
 export interface Sources {

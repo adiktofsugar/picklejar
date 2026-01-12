@@ -103,9 +103,9 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
                    hash = excluded.hash,
                    source_id = excluded.source_id,
                    date_synced = excluded.date_synced,
-                   date_created = excluded.date_created`
+                   date_created = excluded.date_created`,
               )
-              .bind(v.key, v.hash, v.source_id, v.date_synced, v.date_created)
+              .bind(v.key, v.hash, v.source_id, v.date_synced, v.date_created),
           );
 
           try {
@@ -113,7 +113,7 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
             console.log("[SyncSourceWorkflow] Batch insert complete");
           } catch (e) {
             console.error(
-              `[SyncSourceWorkflow] Failed to insert objects: ${e}`
+              `[SyncSourceWorkflow] Failed to insert objects: ${e}`,
             );
             if (e instanceof Error && e.stack) {
               console.error(e.stack);
@@ -146,13 +146,13 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
         },
       });
       console.log(
-        "[SyncSourceWorkflow] Continuation workflow created, exiting"
+        "[SyncSourceWorkflow] Continuation workflow created, exiting",
       );
       return; // the subsequent workflow will finish the job
     }
 
     console.log(
-      "[SyncSourceWorkflow] All objects processed, handling stale objects"
+      "[SyncSourceWorkflow] All objects processed, handling stale objects",
     );
 
     // Handle stale objects (not found in current sync)
@@ -173,7 +173,7 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
           join
             .onRef("stale.hash", "=", "candidate.hash")
             .on("candidate.source_id", "=", sourceId)
-            .on("candidate.date_synced", "=", syncTimestamp)
+            .on("candidate.date_synced", "=", syncTimestamp),
         )
         .select([
           "stale.id as stale_id",
@@ -256,7 +256,7 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
           .where(
             "id",
             "in",
-            toRename.map((r) => r.candidateId)
+            toRename.map((r) => r.candidateId),
           )
           .execute();
 
@@ -271,7 +271,7 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
               date_synced: syncTimestamp,
               date_created: r.newDateCreated,
               hash: r.newHash,
-            }))
+            })),
           )
           .onConflict((oc) =>
             oc.column("id").doUpdateSet((eb) => ({
@@ -279,7 +279,7 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
               date_synced: eb.ref("excluded.date_synced"),
               date_created: eb.ref("excluded.date_created"),
               hash: eb.ref("excluded.hash"),
-            }))
+            })),
           )
           .execute();
       }
@@ -320,8 +320,21 @@ export class SyncSourceWorkflow extends WorkflowEntrypoint<Env, Params> {
         .set({ date_synced: syncDate.getTime() / 1000 })
         .where("id", "=", sourceId)
         .execute();
-      console.log("[SyncSourceWorkflow] Workflow complete!");
+      console.log("[SyncSourceWorkflow] Source updated");
     });
+
+    // Trigger photo metadata processing
+    await step.do("trigger photo processing", async () => {
+      console.log("[SyncSourceWorkflow] Triggering photo processing workflow", {
+        sourceId,
+      });
+      await this.env.ProcessPhotosWorkflow.create({
+        params: { sourceId },
+      });
+      console.log("[SyncSourceWorkflow] Photo processing workflow created");
+    });
+
+    console.log("[SyncSourceWorkflow] Workflow complete!");
   }
 }
 
@@ -334,7 +347,7 @@ async function listObjects(
     s3_bucket: string;
   },
   continuationToken: string | undefined,
-  maxKeys: number
+  maxKeys: number,
 ) {
   console.log("[listObjects] Starting S3 request", {
     endpoint: source.s3_endpoint,
@@ -382,11 +395,11 @@ async function listObjects(
       if (text) {
         const { Code, Message, ...rest } = parseErrorResponse(text);
         throw new Error(
-          `${url.toString()} failed with status ${response.status} - (Code ${Code}): ${Message}\n${JSON.stringify(rest, null, 2)}`
+          `${url.toString()} failed with status ${response.status} - (Code ${Code}): ${Message}\n${JSON.stringify(rest, null, 2)}`,
         );
       }
       throw new Error(
-        `${url.toString()} failed with status ${response.status} - no body`
+        `${url.toString()} failed with status ${response.status} - no body`,
       );
     }
     if (!text) {

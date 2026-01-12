@@ -29,6 +29,8 @@ const codegen: CodegenConfig = {
         mappers: {
           S3Source: "../db-types#SelectableS3SourceRow",
           PhotoConnection: "../db-types#PhotoConnectionRaw",
+          PhotoErrorConnection: "../db-types#PhotoErrorConnectionRaw",
+          PhotoError: "../db-types#PhotoErrorResult",
         },
       } satisfies TypeScriptResolversPluginConfig,
     },

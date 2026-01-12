@@ -21,6 +21,11 @@
       "binding": "SyncSourceWorkflow",
       "class_name": "SyncSourceWorkflow",
     },
+    {
+      "name": "process-photos-workflow",
+      "binding": "ProcessPhotosWorkflow",
+      "class_name": "ProcessPhotosWorkflow",
+    },
   ],
   // ENCRYPTION_KEY should be set via: wrangler secret put ENCRYPTION_KEY
   "vars": {

@@ -7,6 +7,7 @@ type Query {
   sources: [Source!]!
   source(id: ID!): Source!
   photos(first: Int, cursor: String): PhotoConnection!
+  photosErrors(first: Int, cursor: String): PhotoErrorConnection!
   syncStatus(workflowId: ID!): SyncStatus
 }
 
@@ -69,6 +70,8 @@ type Photo {
   id: ID!
   token: String!
   date_created: Int!
+  width: Int!
+  height: Int!
   lat: Float
   lng: Float
 }
@@ -78,6 +81,21 @@ type PhotoEdge {
 }
 type PhotoConnection {
   edges: [PhotoEdge!]!
+  pageInfo: PageInfo!
+  errorCount: Int!
+}
+
+type PhotoError {
+  id: ID!
+  objectKey: String!
+  error: String!
+}
+type PhotoErrorEdge {
+  cursor: String!
+  node: PhotoError!
+}
+type PhotoErrorConnection {
+  edges: [PhotoErrorEdge!]!
   pageInfo: PageInfo!
 }
 

@@ -5,7 +5,7 @@ import typeDefs from "../schema.graphqls?raw";
 import { GraphQLError } from "graphql";
 import { DbCursor } from "./DbCursor";
 import { encryptPhotoToken } from "./crypto";
-import { DB } from "./db-types";
+import { DB, PhotoConnectionResult, PhotoErrorResult } from "./db-types";
 
 type SyncSourceParams = {
   sourceId: number;
@@ -40,18 +40,32 @@ export const resolvers: Resolvers<GraphQLContext> = {
       const cursor = cursorEncoded ? DbCursor.decode(cursorEncoded) : null;
       const limit = first || 100;
 
-      // Join objects with sources to get all data needed for tokens
-      // Left join photos to get lat/lng
-      // Filter to only show objects that have been synced (date_synced matches source)
+      // Query from photos table, join objects and sources
+      // Only show successfully processed photos (no errors, has dimensions)
       let query = db
-        .selectFrom("objects as o")
+        .selectFrom("photos as p")
+        .innerJoin("objects as o", "p.object_id", "o.id")
         .innerJoin("sources as s", "o.source_id", "s.id")
-        .leftJoin("photos as p", "o.id", "p.object_id")
-        .selectAll("o")
-        .selectAll("s")
-        .select(["p.lat", "p.lng"])
-        .select("o.id as object_id") // id is for sources since it's second
+        .select([
+          "p.id",
+          "p.width",
+          "p.height",
+          "p.lat",
+          "p.lng",
+          "p.date_taken",
+          "o.id as object_id",
+          "o.key",
+          "o.date_created",
+          "o.source_id",
+          "s.s3_endpoint",
+          "s.s3_region",
+          "s.s3_bucket",
+          "s.s3_api_key",
+          "s.s3_api_key_secret",
+        ])
         .whereRef("o.date_synced", "=", "s.date_synced")
+        .where("p.processing_error", "is", null)
+        .where("p.width", "is not", null)
         .orderBy("o.date_created", "desc")
         .limit(limit + 1);
 
@@ -60,10 +74,10 @@ export const resolvers: Resolvers<GraphQLContext> = {
           eb.or([
             // older than the cursor object
             eb("o.date_created", "<", cursor.dateCreated),
-            // or the same date, but created after (id is auto increment)
+            // or the same date, but with smaller photo id
             eb.and([
               eb("o.date_created", "=", cursor.dateCreated),
-              eb("o.id", "<", cursor.id),
+              eb("p.id", "<", cursor.id),
             ]),
           ]),
         );
@@ -72,8 +86,48 @@ export const resolvers: Resolvers<GraphQLContext> = {
       const results = await query.execute();
       const hasNextPage = results.length > limit;
 
+      // Get error count separately
+      const errorCountResult = await db
+        .selectFrom("photos as p")
+        .innerJoin("objects as o", "p.object_id", "o.id")
+        .innerJoin("sources as s", "o.source_id", "s.id")
+        .select(({ fn }) => fn.countAll<number>().as("count"))
+        .whereRef("o.date_synced", "=", "s.date_synced")
+        .where("p.processing_error", "is not", null)
+        .executeTakeFirst();
+
+      // Cast results - we know these fields are non-null due to WHERE clauses
       return {
-        results: results.slice(0, limit),
+        results: results.slice(0, limit) as PhotoConnectionResult[],
+        hasNextPage,
+        errorCount: errorCountResult?.count ?? 0,
+      };
+    },
+    photosErrors: async (_parent, { cursor: cursorEncoded, first }, { db }) => {
+      const cursor = cursorEncoded ? DbCursor.decode(cursorEncoded) : null;
+      const limit = first || 100;
+
+      // Query photos with errors
+      let query = db
+        .selectFrom("photos as p")
+        .innerJoin("objects as o", "p.object_id", "o.id")
+        .innerJoin("sources as s", "o.source_id", "s.id")
+        .select(["p.id", "p.object_id", "o.key", "p.processing_error"])
+        .whereRef("o.date_synced", "=", "s.date_synced")
+        .where("p.processing_error", "is not", null)
+        .orderBy("p.id", "desc")
+        .limit(limit + 1);
+
+      if (cursor) {
+        query = query.where("p.id", "<", cursor.id);
+      }
+
+      const results = await query.execute();
+      const hasNextPage = results.length > limit;
+
+      // Cast results - we know processing_error is non-null due to WHERE clause
+      return {
+        results: results.slice(0, limit) as PhotoErrorResult[],
         hasNextPage,
       };
     },
@@ -200,6 +254,8 @@ export const resolvers: Resolvers<GraphQLContext> = {
     id: (p) => p.id,
     token: (p) => p.token,
     date_created: (p) => p.date_created,
+    width: (p) => p.width,
+    height: (p) => p.height,
     lat: (p) => p.lat,
     lng: (p) => p.lng,
   },
@@ -226,13 +282,15 @@ export const resolvers: Resolvers<GraphQLContext> = {
 
           return {
             node: {
-              id: String(row.object_id),
+              id: String(row.id), // Use photo.id
               token,
               date_created: row.date_created,
+              width: row.width!,
+              height: row.height!,
               lat: row.lat,
               lng: row.lng,
             },
-            cursor: new DbCursor(row.object_id, row.date_created).encode(),
+            cursor: new DbCursor(row.id, row.date_created).encode(),
           } satisfies PhotoEdge;
         }),
       );
@@ -242,8 +300,33 @@ export const resolvers: Resolvers<GraphQLContext> = {
       return {
         hasNextPage: p.hasNextPage,
         endCursor: last
-          ? new DbCursor(last.object_id, last.date_created).encode()
+          ? new DbCursor(last.id, last.date_created).encode()
           : null,
+      };
+    },
+    errorCount: (p) => p.errorCount,
+  },
+  PhotoError: {
+    id: (p) => String(p.id),
+    objectKey: (p) => p.key,
+    error: (p) => p.processing_error,
+  },
+  PhotoErrorEdge: {
+    cursor: (p) => p.cursor,
+    node: (p) => p.node,
+  },
+  PhotoErrorConnection: {
+    edges: (p) => {
+      return p.results.map((row) => ({
+        node: row, // Pass raw result to PhotoError resolver
+        cursor: new DbCursor(row.id, 0).encode(),
+      }));
+    },
+    pageInfo: (p) => {
+      const last = p.results.at(-1);
+      return {
+        hasNextPage: p.hasNextPage,
+        endCursor: last ? new DbCursor(last.id, 0).encode() : null,
       };
     },
   },
